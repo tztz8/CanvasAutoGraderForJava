@@ -1,5 +1,9 @@
 # EWU Auto Grading
 
+> In Progress
+
+> NOT READY TO BE USED
+
 ## TODO:
 
  - [ ] Check if modified and safe to upload
@@ -20,3 +24,8 @@
    - [ ] Run and Read CheckStyle results
  - [ ] Upload Grade
    - [ ] if potable use rubric
+ - [ ] Make it a GitHub Action
+ - [ ] Add Doc
+   - start in notes move to docs folder
+   - [ ] How to use it
+   - [ ] How this works
