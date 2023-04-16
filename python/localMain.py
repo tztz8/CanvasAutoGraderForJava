@@ -1,4 +1,7 @@
 import sys
+import tkinter.filedialog
+import tkinter.simpledialog
+from pathlib import Path
 
 from junitxmlparser import get_results
 
@@ -34,7 +37,7 @@ def step_run_tests(setupDir):
     # TODO: run CheckStyle
 
 
-def step_read_tests(setupDir):
+def step_read_tests(setup_dir):
     print("not setup")
     # TODO: read JUnit tests
     results = dict()
@@ -55,23 +58,24 @@ def step_upload_grades(grades, API_KEY, API_URL, COURSE_ID, assignment_ID, class
 
 if __name__ == '__main__':
     print('Start Auto Grader')
-    gitHubOauthToken = input("GitHub OAuth Token: ")
-    gitHubUser = input("GitHub UserName (GitHub class Organization User Name): ")
-    gitHubStartRepo = input("GitHub Starting Repo (Ex EWU-CSCD999/cscd999-n99-lab9999): ")
-    setupDir = input("Setup dir (Ex /home/graderUserName/TAcscd999/grading/lab9999): ")
-    sourceTests = input("Source Tests (Ex /home/graderUserName/TAcscd999/setup/lab999-sol/tests): ")
-    API_KEY = input("Canvas API KEY: ")
-    API_URL = input("Canvas URL: ")
-    COURSE_ID = input("Canvas course ID: ")
-    assignment_ID = input("Canvas assignment ID: ")
-    class_csv = input("Class Github To Canvas User ID csv file: ")
     print('Getting Student Labs')
+    gitHubUser = tkinter.simpledialog.askstring(
+        title="GitHub OAuth User", prompt="Enter GitHub UserName:", initialvalue="EWU-CSCD212")
+    gitHubOauthToken = tkinter.simpledialog.askstring(
+        title="GitHub OAuth Token", prompt="Enter OAuth Token:", show='*')
+    gitHubStartRepo = tkinter.simpledialog.askstring(
+        title="GitHub Staring Repo", prompt="Enter GitHub Repo:", initialvalue="EWU-CSCD212/cscd212-s23-lab#")
+    setupDir = tkinter.filedialog.askdirectory(title="Setup Dir", initialdir=Path.home().as_posix())
+    class_csv = tkinter.filedialog.askopenfile(
+        mode='r', title="Class CSV File", initialdir="../../EWU/CSCD212/Grading",
+        filetypes=(("CSV files", "*.csv"), ("all files", "*")))
     step_get_labs(gitHubOauthToken, gitHubUser, gitHubStartRepo, setupDir, class_csv)
     do_we_continue()
     print('Setup Labs')
     step_setup_labs(setupDir)
     do_we_continue()
     print('Setup Tests')
+    sourceTests = tkinter.filedialog.askdirectory(title="Tests Dir", initialdir=Path.home().as_posix())
     step_setup_tests(setupDir, sourceTests)
     do_we_continue()
     print('Running Grader')
@@ -82,5 +86,13 @@ if __name__ == '__main__':
     grades = step_read_tests(setupDir)
     do_we_continue()
     print('Uploading Grades')
-    # step_upload_grades(grades, API_KEY, API_URL, COURSE_ID, assignment_ID, class_csv)
+    API_KEY = tkinter.simpledialog.askstring(
+        title="Canvas OAuth Token", prompt="Enter OAuth Token:", show='*')
+    API_URL = tkinter.simpledialog.askstring(
+        title="Canvas URL", prompt="Enter Canvas URL:", initialvalue="https://canvas.ewu.edu/")
+    COURSE_ID = tkinter.simpledialog.askinteger(
+        title="Canvas Course ID", prompt="Enter Canvas Course ID:", initialvalue=1652821)
+    assignment_ID = tkinter.simpledialog.askinteger(
+        title="Canvas assignment ID", prompt="Enter Canvas assignment ID:")
+    step_upload_grades(grades, API_KEY, API_URL, COURSE_ID, assignment_ID, class_csv)
     print('Done')
