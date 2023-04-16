@@ -1,0 +1,26 @@
+Step 1
+Create a workflow in repo EWU-CSCD212/cscd212-s23-jar-tests-files
+
+Step 2
+Copy and paste his workflow script into the repo above
+
+Step 3
+Edit Line 4 where it says on: [ push ] to on: workflow_call
+This is the only thing you need to change except variables that you normally would.
+Every new lab you will need to just make a duplicate of this workflow inside of the repo EWU-CSCD212/cscd212-s23-jar-tests-files and change it like normal.
+
+
+Step 4
+Every lab create a new script workflow containing just these four lines
+
+
+on: [ push ]
+jobs:
+  call-workflow-passing-data:
+    uses: EWU-CSCD212/cscd212-s23-jar-tests-files/.github/workflows/NAME_OF_WORKFLOW_GOES_HERE.yml@main
+	
+	
+Step 5
+Edit the name of the workflow to the name you named it inside of EWU-CSCD212/cscd212-s23-jar-tests-files
+
+Students will be able to see the public repo but not change the workflow. If they change there four lines it will completely disconnect them from our stuff. Any update of the due date can be changed without merging or pulling material. All edits will be in the jar test workflow. However if you make a change and the student has submitted it in advance he will need to re push his code by adding a comment or re doing the workflow.
