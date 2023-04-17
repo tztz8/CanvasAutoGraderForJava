@@ -1,3 +1,4 @@
+import subprocess
 import sys
 import tkinter.filedialog
 import tkinter.simpledialog
@@ -15,28 +16,39 @@ def do_we_continue():
 
 
 def step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv):
-    print("not setup")
+    # Setup GitHub API
     github_tool = Github(gitHubOauthToken)
     start_repo = github_tool.get_repo(gitHubStartRepo)
     forks_pages = start_repo.get_forks()
+    # Setup loop
     num_of_forks = 0
-    i = 0
+    num_of_fork_pages = 0
     forks = forks_pages.get_page(0)
-    while len(forks) > 0:
-        for fork in forks:
-            # TODO: check if user in class_csv
-            github_user_name = fork.owner.login
-            # TODO: download lab (fork) in setDir
-            url = fork.ssh_url
-            command = "git clone --progress " + url + " " + setupDir + "/" + github_user_name
-            print(command)
-            print("User: ", github_user_name, ", clone to: TODO ", fork)
-            num_of_forks += 1
-        i += 1
-        forks = forks_pages.get_page(i)
-        assert num_of_forks <= start_repo.forks
+    with open(f"{setupDir}/gitoutput.txt", "w") as outfile:  # debug output file
+        while len(forks) > 0:  # GitHub API will only give page of forks at a time
+            for fork in forks:  # Each fork
+                # Check if in class (Use for when start repo is not just this class)
+                github_user_name = fork.owner.login
+                # TODO: check if user in class_csv
+                # github_user_name class_csv
+
+                # Clone the fork (student repo)
+                url = fork.ssh_url
+                clone_to = setupDir + "/" + github_user_name
+                command = ["git", "clone", "--progress", url, clone_to]
+                # run command
+                subprocess.run(command, stdout=outfile)
+
+                # Done with getting a lab
+                print("User: ", github_user_name, ", clone to: ", clone_to)
+                num_of_forks += 1
+            num_of_fork_pages += 1
+            forks = forks_pages.get_page(num_of_fork_pages) # GitHub API will only give page of forks at a time
+            assert num_of_forks <= start_repo.forks
+    # Done with getting the labs
     print("Number of Labs: ", num_of_forks,
           ", Number of Forks: ", start_repo.forks,
+          ", Number of Fork Pages: ", num_of_fork_pages,
           ", Number of students: TODO add")
 
 
