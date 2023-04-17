@@ -2,7 +2,9 @@ import subprocess
 import sys
 import tkinter.filedialog
 import tkinter.simpledialog
+import tkinter.messagebox
 import secret
+import canvastools
 from pathlib import Path
 from github import Github
 from junitxmlparser import get_results
@@ -21,6 +23,7 @@ def step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv):
     start_repo = github_tool.get_repo(gitHubStartRepo)
     forks_pages = start_repo.get_forks()
     # Setup loop
+    dict_of_students = dict()
     num_of_forks = 0
     num_of_fork_pages = 0
     forks = forks_pages.get_page(0)
@@ -39,17 +42,21 @@ def step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv):
                 # run command
                 subprocess.run(command, stdout=outfile)
 
+                # TODO: get_collaborators() only Teacher check (add to dict for grading)
+
                 # Done with getting a lab
+                dict_of_students[github_user_name] = (github_user_name, clone_to)
                 print("User: ", github_user_name, ", clone to: ", clone_to)
                 num_of_forks += 1
             num_of_fork_pages += 1
-            forks = forks_pages.get_page(num_of_fork_pages) # GitHub API will only give page of forks at a time
+            forks = forks_pages.get_page(num_of_fork_pages)  # GitHub API will only give page of forks at a time
             assert num_of_forks <= start_repo.forks
     # Done with getting the labs
     print("Number of Labs: ", num_of_forks,
           ", Number of Forks: ", start_repo.forks,
           ", Number of Fork Pages: ", num_of_fork_pages,
           ", Number of students: TODO add")
+    return dict_of_students
 
 
 def step_setup_labs(setupDir):
@@ -67,7 +74,9 @@ def step_setup_tests(setupDir, sourceTests):
 def step_run_tests(setupDir):
     print("not setup")
     # TODO: run JUnit
+    # subprocess.run(command, stdout=outfile)
     # TODO: run CheckStyle
+    # subprocess.run(command, stdout=outfile)
 
 
 def step_read_tests(setup_dir):
@@ -87,6 +96,9 @@ def step_read_tests(setup_dir):
 def step_upload_grades(grades, API_KEY, API_URL, COURSE_ID, assignment_ID, class_csv):
     print("not setup")
     # TODO: upload grades
+    tool = canvastools.CanvasTools(API_KEY, API_URL, COURSE_ID, assignment_ID)
+    # tool.update_grade()
+    # for grade in grades:
 
 
 if __name__ == '__main__':
@@ -104,11 +116,16 @@ if __name__ == '__main__':
         title="Setup Dir",
         initialdir=Path.home().as_posix()
     )
-    # class_csv = tkinter.filedialog.askopenfile(
-    #     mode='r', title="Class CSV File", initialdir="../../EWU/CSCD212/Grading",
-    #     filetypes=(("CSV files", "*.csv"), ("all files", "*")))
-    class_csv = None
-    step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv)
+    class_csv = tkinter.filedialog.askopenfile(
+        mode='r', title="Class CSV File", initialdir="../../EWU/CSCD212/Grading",
+        filetypes=(("CSV files", "*.csv"), ("all files", "*")))
+    print("gitHubOauthToken: ", gitHubOauthToken,
+          ", gitHubStartRepo: ", gitHubStartRepo,
+          ", setupDir: ", setupDir,
+          ", class_csv: ", class_csv)
+    response = tkinter.messagebox.askokcancel("askokcancel", "Want to run get labs step?")
+    if response:
+        step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv)
     do_we_continue()
     print('Setup Labs')
     step_setup_labs(setupDir)

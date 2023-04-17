@@ -1,23 +1,26 @@
 from canvasapi import Canvas
 
 
-# TODO: get info (name, due, lock, points)
+class CanvasTools:
+    def __int__(self, api_key, api_url, course_id, assignment_id):
+        self.canvas = Canvas(api_url, api_key)
+        self.course = self.canvas.get_course(course_id)
+        self.assignment = self.course.get_assignment(assignment_id)
 
-def update_grade(api_key, api_url, course_id, assignment_id, user_id, grade):
-    # Initialize a new Canvas object
-    canvas = Canvas(api_url, api_key)
+    def getAssignmentInfoStr(self):
+        return "Assignment Name: " + self.assignment.name \
+            + ", Due: " + self.assignment.due_at \
+            + ", lock: " + self.assignment.lock_at
 
-    # Grab course with ID of 123456
-    course = canvas.get_course(course_id)
+    def getAssignmentInfo(self):
+        return (self.assignment.name, self.assignment.due_at, self.assignment.lock_at)
 
-    # Grab assignment with ID of 1234
-    assignment = course.get_assignment(assignment_id)
+    def update_grade(self, user_id, grade):
+        # Grab user submission
+        submission = self.assignment.get_submission(user_id)
 
-    # Grab user submission
-    submission = assignment.get_submission(user_id)
+        points = self.assignment.points_possible
 
-    points = assignment.points_possible
+        output_grade = (grade / 100) * points
 
-    output_grade = (grade / 100) * points
-
-    submission.edit(submission={'posted_grade': output_grade})
+        submission.edit(submission={'posted_grade': output_grade})  # TODO: set grader auto
