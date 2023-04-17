@@ -2,7 +2,7 @@ from canvasapi import Canvas
 
 
 class CanvasTools:
-    def __int__(self, api_key, api_url, course_id, assignment_id):
+    def __init__(self, api_key: str, api_url: str, course_id: int, assignment_id: int):
         self.canvas = Canvas(api_url, api_key)
         self.course = self.canvas.get_course(course_id)
         self.assignment = self.course.get_assignment(assignment_id)
