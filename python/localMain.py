@@ -1,8 +1,9 @@
 import sys
 import tkinter.filedialog
 import tkinter.simpledialog
+import secret
 from pathlib import Path
-
+from github import Github
 from junitxmlparser import get_results
 
 
@@ -13,10 +14,30 @@ def do_we_continue():
         sys.exit("No Countue")
 
 
-def step_get_labs(gitHubOauthToken, gitHubUser, gitHubStartRepo, setupDir, class_csv):
+def step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv):
     print("not setup")
-    # download all labs
-    # TODO: get labs
+    github_tool = Github(gitHubOauthToken)
+    start_repo = github_tool.get_repo(gitHubStartRepo)
+    forks_pages = start_repo.get_forks()
+    num_of_forks = 0
+    i = 0
+    forks = forks_pages.get_page(0)
+    while len(forks) > 0:
+        for fork in forks:
+            # TODO: check if user in class_csv
+            github_user_name = fork.owner.login
+            # TODO: download lab (fork) in setDir
+            url = fork.ssh_url
+            command = "git clone --progress " + url + " " + setupDir + "/" + github_user_name
+            print(command)
+            print("User: ", github_user_name, ", clone to: TODO ", fork)
+            num_of_forks += 1
+        i += 1
+        forks = forks_pages.get_page(i)
+        assert num_of_forks <= start_repo.forks
+    print("Number of Labs: ", num_of_forks,
+          ", Number of Forks: ", start_repo.forks,
+          ", Number of students: TODO add")
 
 
 def step_setup_labs(setupDir):
@@ -59,17 +80,23 @@ def step_upload_grades(grades, API_KEY, API_URL, COURSE_ID, assignment_ID, class
 if __name__ == '__main__':
     print('Start Auto Grader')
     print('Getting Student Labs')
-    gitHubUser = tkinter.simpledialog.askstring(
-        title="GitHub OAuth User", prompt="Enter GitHub UserName:", initialvalue="EWU-CSCD212")
     gitHubOauthToken = tkinter.simpledialog.askstring(
-        title="GitHub OAuth Token", prompt="Enter OAuth Token:", show='*')
+        title="GitHub OAuth Token", prompt="Enter OAuth Token:", show='*',
+        initialvalue=secret.GITHUB_OAUTH_TOKEN
+    )
     gitHubStartRepo = tkinter.simpledialog.askstring(
-        title="GitHub Staring Repo", prompt="Enter GitHub Repo:", initialvalue="EWU-CSCD212/cscd212-s23-lab#")
-    setupDir = tkinter.filedialog.askdirectory(title="Setup Dir", initialdir=Path.home().as_posix())
-    class_csv = tkinter.filedialog.askopenfile(
-        mode='r', title="Class CSV File", initialdir="../../EWU/CSCD212/Grading",
-        filetypes=(("CSV files", "*.csv"), ("all files", "*")))
-    step_get_labs(gitHubOauthToken, gitHubUser, gitHubStartRepo, setupDir, class_csv)
+        title="GitHub Staring Repo", prompt="Enter GitHub Repo:",
+        initialvalue="EWU-CSCD212/cscd212-s23-lab#"
+    )
+    setupDir = tkinter.filedialog.askdirectory(
+        title="Setup Dir",
+        initialdir=Path.home().as_posix()
+    )
+    # class_csv = tkinter.filedialog.askopenfile(
+    #     mode='r', title="Class CSV File", initialdir="../../EWU/CSCD212/Grading",
+    #     filetypes=(("CSV files", "*.csv"), ("all files", "*")))
+    class_csv = None
+    step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv)
     do_we_continue()
     print('Setup Labs')
     step_setup_labs(setupDir)
@@ -87,11 +114,11 @@ if __name__ == '__main__':
     do_we_continue()
     print('Uploading Grades')
     API_KEY = tkinter.simpledialog.askstring(
-        title="Canvas OAuth Token", prompt="Enter OAuth Token:", show='*')
+        title="Canvas OAuth Token", prompt="Enter OAuth Token:", show='*', initialvalue=secret.API_KEY)
     API_URL = tkinter.simpledialog.askstring(
-        title="Canvas URL", prompt="Enter Canvas URL:", initialvalue="https://canvas.ewu.edu/")
+        title="Canvas URL", prompt="Enter Canvas URL:", initialvalue=secret.API_URL)
     COURSE_ID = tkinter.simpledialog.askinteger(
-        title="Canvas Course ID", prompt="Enter Canvas Course ID:", initialvalue=1652821)
+        title="Canvas Course ID", prompt="Enter Canvas Course ID:", initialvalue=secret.COURSE_ID)
     assignment_ID = tkinter.simpledialog.askinteger(
         title="Canvas assignment ID", prompt="Enter Canvas assignment ID:")
     step_upload_grades(grades, API_KEY, API_URL, COURSE_ID, assignment_ID, class_csv)
