@@ -1,3 +1,5 @@
+import os
+import shutil
 import subprocess
 import sys
 import tkinter.filedialog
@@ -58,18 +60,42 @@ def step_get_labs(git_hub_oauth_token, git_hub_start_repo, setup_dir, class_csv)
     return dict_of_students
 
 
-def step_setup_labs(setup_dir):
-    print("not setup")
-    # remove any un-use things
-    # TODO: setup labs
+def step_setup_labs(setup_dir, students):
+    # [ name for name in os.listdir(setup_dir) if os.path.isdir(os.path.join(setup_dir, name)) ]
+    for student in students:
+        student_dir = setup_dir + "/forks/" + student
+        if os.path.exists(student_dir + "/out"):
+            shutil.rmtree(student_dir + "/out")  # If student modify/ignore the .gitignore file
+        if os.path.exists(student_dir + "/.idea"):
+            shutil.rmtree(student_dir + "/.idea", ignore_errors=True)  # If I need to grade make it better
+        shutil.rmtree(student_dir + "/docs")  # stop finding files in here that not needed
+        shutil.rmtree(student_dir + "/tests")  # remove old tests (also the student may modify the tests)
+        if os.path.exists(student_dir + "/*.iml"):
+            os.remove(student_dir + "/*.iml")  # If I need to grade make it better
+
+        if os.path.exists(student_dir + "/src"):
+            print(student, " Setup Done")
+        else:
+            print(student, " Missing src folder")
 
 
-def step_setup_tests(setup_dir, source_tests):
-    print("not setup")
-    # wget https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.9.2/junit-platform-console-standalone-1.9.2.jar
-    # https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.9.3/checkstyle-10.9.3-all.jar
-    # copy tests into each lab
-    # TODO: copy tests in to labs
+def step_setup_tests(setup_dir, source_tests, students):
+    # make tool dir, change into tool dir, download file
+    os.system("mkdir -p " + setup_dir + "/tools && cd " + setup_dir + "/tools && wget "
+              + "https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.9.2/junit-platform-console-standalone-1.9.2.jar")
+    # make tool dir, change into tool dir, download file
+    os.system("mkdir -p " + setup_dir + "/tools && cd " + setup_dir + "/tools && wget "
+              + "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.9.3/checkstyle-10.9.3-all.jar")
+    if os.path.isdir(source_tests):
+        # copy tests into each lab
+        for student in students:
+            student_dir = setup_dir + "/forks/" + student + "/tests"
+            shutil.copytree(source_tests, student_dir)
+            print(student, " Setup Done")
+
+    else:
+        # copy test jar to tools
+        shutil.copy(source_tests, setup_dir + "/tools")
 
 
 def step_run_tests(setup_dir):
@@ -131,22 +157,21 @@ if __name__ == '__main__':
           ", class_csv: ", class_csv)
     # Check if run step with user
     response = tkinter.messagebox.askokcancel("askokcancel", "Want to run get labs step?")
+    students = dict()
     if response:
-        step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv)
+        students = step_get_labs(gitHubOauthToken, gitHubStartRepo, setupDir, class_csv)
     else:
         print("Skip")
-
 
     do_we_continue()
     print('Setup Labs')
     # Print args for step
-    print("setupDir: ", setupDir)
+    print("setupDir: ", setupDir, ", students: ", students)
     response = tkinter.messagebox.askokcancel("askokcancel", "Want to run setup labs step?")
     if response:
-        step_setup_labs(setupDir)
+        step_setup_labs(setupDir, students)
     else:
         print("Skip")
-
 
     do_we_continue()
     print('Setup Tests')
@@ -158,10 +183,9 @@ if __name__ == '__main__':
     # Check if run step with user
     response = tkinter.messagebox.askokcancel("askokcancel", "Want to run setup tests step?")
     if response:
-        step_setup_tests(setupDir, sourceTests)
+        step_setup_tests(setupDir, sourceTests, students)
     else:
         print("Skip")
-
 
     do_we_continue()
     print('Running Grader')
@@ -174,7 +198,6 @@ if __name__ == '__main__':
     else:
         print("Skip")
 
-
     do_we_continue()
     print('Read Grades')
     # Print args for step
@@ -186,8 +209,6 @@ if __name__ == '__main__':
         grades = step_read_tests(setupDir)
     else:
         print("Skip")
-
-
 
     do_we_continue()
     print('Uploading Grades')
