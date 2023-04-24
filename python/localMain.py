@@ -6,6 +6,8 @@ import sys
 import tkinter.filedialog
 import tkinter.simpledialog
 import tkinter.messagebox
+
+import junitxmlparser
 import secret
 from canvastools import CanvasTools
 from github import Github
@@ -69,7 +71,12 @@ def step_get_labs(git_hub_oauth_token, git_hub_start_repo, setup_dir, class_csv)
                 dict_of_students[row[3]][0] = row[0]
                 dict_of_students[row[3]][1] = row[1]
             elif num_of_students != 0:
-                print("Missing Student: ", row)
+                print("Missing Student Fork: ", row)
+
+            if num_of_students != 0:
+                print("Hi")
+                # TODO: use src from submission from canvas if src missing in git repo
+
             num_of_students += 1
     # Done with getting the labs
     print("Number of Labs: ", num_of_forks,
@@ -127,7 +134,7 @@ def step_setup_tests(setup_dir, source_tests, students):
         print("Copy Jar into tools done")
 
 
-def step_run_tests(setup_dir, jar, junit_to_run, students):
+def step_run_tests(setup_dir, jar, junit_to_run_list, students):
     with open(f"{setup_dir}/testoutput.txt", "w") as output:
         for student in students:
             student_dir = setup_dir + "/forks/" + student
@@ -139,15 +146,18 @@ def step_run_tests(setup_dir, jar, junit_to_run, students):
             stream = os.popen("cd " + student_dir + " && " +
                               "javac -Xlint:unchecked -cp " +
                               setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar -cp " +
-                              setup_dir + "/tools/tests.jar -d out/classes $(find src -name '*.java')")
+                              jar + " -d out/classes $(find src -name '*.java')")
             output.write(stream.read())
             # Run JUnit Tests
-            stream = os.popen("cd " + student_dir + " && " +
-                              "java -jar " +
-                              setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar " +
-                              "--reports-dir=build/test-results/test1 -cp " +
-                              jar + " -cp out/classes --select-class=" + junit_to_run)
-            output.write(stream.read())
+            index = 0
+            for junit_to_run in junit_to_run_list:
+                index += 1
+                stream = os.popen("cd " + student_dir + " && " +
+                                  "java -jar " +
+                                  setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar " +
+                                  "--reports-dir=build/test-results/test" + str(index) + " -cp " +
+                                  jar + " -cp out/classes --select-class=" + junit_to_run)
+                output.write(stream.read())
             # Run CheckStyle Tests
             stream = os.popen("cd " + student_dir + " && " +
                               "java -jar " +
@@ -161,16 +171,19 @@ def step_run_tests(setup_dir, jar, junit_to_run, students):
     # java -jar checkstyle-10.9.3-all.jar -c=https://github.com/tztz8/HelloGradle/raw/master/ewu-cscd212-error.xml -o=checkstyleoutfile $(find src -name '*.java')
 
 
-def step_read_tests(setup_dir, students):
+def step_read_tests(setup_dir, num_of_junit_tests, students):
     with open(setup_dir + '/grades.csv', 'w') as csvfile:
         grad_writer = csv.writer(csvfile)
-        grad_writer.writerow(["name", "canvas_id", "github_user_name", "clone_to", "score"])
+        grad_writer.writerow(["name", "canvas_id", "github_user_name", "clone_to", "junit_result", "checkstyle_result", "score"])
         for student in students:
             student_dir = setup_dir + "/forks/" + student
-            junit_weight = 98/100
-            junit_result = get_results(student_dir + '/build/test-results/test1/TEST-junit-jupiter.xml')
-            checkstyle_weight = 2/100
+            junit_weight = 98 / 100
+            junit_result = junitxmlparser.get_mut_tests_results(
+                num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml')
+            students[student].append(junit_result)
+            checkstyle_weight = 2 / 100
             checkstyle_result = get_checkstyle_results(student_dir + '/checkstyleoutfile')
+            students[student].append(junit_result)
             assert (junit_weight + checkstyle_weight) == 1
             result = (junit_weight * junit_result) + (checkstyle_weight * checkstyle_result)
             students[student].append(result)
@@ -178,13 +191,13 @@ def step_read_tests(setup_dir, students):
             grad_writer.writerow(students[student])
 
 
-def step_upload_grades(grades, api_key, api_url, course_id, assignment_id,):
+def step_upload_grades(grades, api_key, api_url, course_id, assignment_id, ):
     print("not setup")
     # TODO: upload grades
     tool = CanvasTools(api_key, api_url, course_id, assignment_id)
     for student in grades:
         print("Uploading Grade for ", grades[student][0])
-        tool.update_grade(grades[student][1], grades[student][4])
+        tool.update_grade(grades[student][1], grades[student][len(grades[student]) - 1])
     # tool.update_grade()
     # for grade in grades:
 
@@ -250,17 +263,23 @@ if __name__ == '__main__':
 
     do_we_continue()
     print('Running Grader')
-    junit_to_run = tkinter.simpledialog.askstring(
-        title="JUnit Class to run",
-        prompt="Class To Run",
-        initialvalue="cscd211tests.lab3.CSCD212Lab3Test"
-    )
+    junit_to_run_list = []
+    # TODO: number of junit tests
+    while response:
+        junit_to_run = tkinter.simpledialog.askstring(
+            title="JUnit Class to run",
+            prompt="Class To Run",
+            initialvalue="cscd211tests.lab3.CSCD212Lab3Test"
+        )
+        junit_to_run_list.append(junit_to_run)
+        response = tkinter.messagebox.askokcancel("Add more", "Want to add more tests?")
     # Print args for step
-    print("setupDir: ", setupDir, ", junit_to_run: ", junit_to_run, ", students: ", students)
+    print("setupDir: ", setupDir, ", junit_to_run_list: ", junit_to_run_list, ", students: ", students)
     # Check if run step with user
+    response = True
     # response = tkinter.messagebox.askokcancel("askokcancel", "Want to run grading step?")
     if response:
-        step_run_tests(setupDir, sourceTests, junit_to_run, students)
+        step_run_tests(setupDir, sourceTests, junit_to_run_list, students)
     else:
         print("Skip")
 
@@ -271,7 +290,7 @@ if __name__ == '__main__':
     # Check if run step with user
     # response = tkinter.messagebox.askokcancel("askokcancel", "Want to run read grades step?")
     if response:
-        step_read_tests(setupDir, students)
+        step_read_tests(setupDir, len(junit_to_run_list), students)
     else:
         print("Skip")
 
