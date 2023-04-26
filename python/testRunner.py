@@ -2,6 +2,7 @@ import csv
 import os
 import shutil
 import subprocess
+import sys
 import tkinter.filedialog
 import tkinter.simpledialog
 import tkinter.messagebox
@@ -157,7 +158,6 @@ class TestRunner:
         shutil.copy(self.source_test_jar, self.setup_dir + "/tools")
         print("Copy Jar into tools done")
 
-
     def step_setup_labs(self):
         # [ name for name in os.listdir(setup_dir) if os.path.isdir(os.path.join(setup_dir, name)) ]
         for student in self.students:
@@ -225,6 +225,7 @@ class TestRunner:
                 forks = forks_pages.get_page(num_of_fork_pages)  # GitHub API will only give page of forks at a time
                 assert num_of_forks <= self.start_repo.forks
         num_of_students = 0
+        num_of_canvas_download = 0
         with open(self.class_csv, 'r') as class_csv_file:
             csv_reader = csv.reader(class_csv_file, delimiter=',')
             for row in csv_reader:
@@ -233,15 +234,74 @@ class TestRunner:
                     self.students[row[3]][1] = row[1]
                 elif num_of_students != 0:
                     print("Missing Student Fork: ", row)
-
-                if num_of_students != 0:
-                    print("Hi")
-                    # TODO: use src from submission from canvas if src missing in git repo
+                studetn_folder = self.setup_dir + "/forks/" + row[3]
+                # Missing fork or src folder
+                if num_of_students != 0 and not (row[3] in self.students.keys() or os.path.exists(
+                        studetn_folder + "/src")):
+                    found_src_folder = False
+                    self._check_canvas_tools()
+                    if row[1] in self.canvas_tools.users:
+                        # get canvas submission
+                        submission = self.canvas_tools.assignment.get_submission(row[1])
+                        for file in submission.attachments:
+                            file_name_parts = file.__str__().split(".")
+                            output_file = studetn_folder + "/download/" + file.__str__()
+                            file.download(output_file)
+                            if file_name_parts[len(file_name_parts) - 1] == "zip":
+                                # unzip submission
+                                shutil.unpack_archive(output_file, studetn_folder)
+                                if os.path.exists(self.setup_dir + "/forks/" + row[3] + "/__MACOSX"):
+                                    shutil.rmtree(self.setup_dir + "/forks/" + row[3] + "/__MACOSX")
+                                # move src folder
+                                found_src_folder = self.move_src_folder(found_src_folder, studetn_folder)
+                    else:
+                        print("Student not in canvas: ", row)
+                    # Check if src folder is there
+                    if os.path.exists(studetn_folder + "/src"):
+                        # move src folder
+                        found_src_folder = self.move_src_folder(found_src_folder, studetn_folder)
+                    if not found_src_folder:
+                        print("Missing Student src folder: ", row)
+                    self.students[row[3]] = [row[0], row[1], row[3], self.setup_dir + "/forks/" + row[3]]
+                    num_of_canvas_download += 1
 
                 num_of_students += 1
         # Done with getting the labs
         print("Number of Labs: ", num_of_forks,
               ", Number of Forks: ", self.start_repo.forks,
               ", Number of Fork Pages: ", num_of_fork_pages,
+              ", Number of Canvas Download: ", num_of_canvas_download,
               ", Number of students: ", num_of_students)
         return self.students
+
+    def move_src_folder(self, found_src_folder, studetn_folder):
+        for root, subdirs, files in os.walk(studetn_folder):
+            for d in subdirs:
+                if d == "src":
+                    found_src_folder = True
+                    shutil.move(os.path.join(root, d), studetn_folder + "/src")
+        return found_src_folder
+
+
+def do_we_continue():
+    ans = input("Countue?")
+    ans = ans.lower()
+    if ans == 'no' or ans == 'n':
+        sys.exit("No Countue")
+
+
+if __name__ == '__main__':
+    test_runer = TestRunner()
+    test_runer.gui_set_things()
+    do_we_continue()
+    test_runer.step_get_labs()
+    do_we_continue()
+    test_runer.step_setup_labs()
+    do_we_continue()
+    test_runer.step_setup_tests()
+    do_we_continue()
+    test_runer.step_run_tests()
+    do_we_continue()
+    test_runer.step_read_tests()
+    do_we_continue()
+    test_runer.step_upload_grades()
