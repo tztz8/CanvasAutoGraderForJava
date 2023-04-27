@@ -226,6 +226,8 @@ class TestRunner:
         num_of_forks = 0
         num_of_fork_pages = 0
         forks = forks_pages.get_page(0)
+        if not os.path.exists(self.setup_dir):
+            os.mkdir(self.setup_dir)
         with open(f"{self.setup_dir}/gitoutput.txt", "w") as outfile:  # debug output file
             while len(forks) > 0:  # GitHub API will only give page of forks at a time
                 for fork in forks:  # Each fork
