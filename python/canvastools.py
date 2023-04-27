@@ -14,6 +14,12 @@ class CanvasTools:
         self.users = self.course.get_users()
         self.assignment = self.course.get_assignment(assignment_id)
 
+    def is_in_course(self, canvas_id: int):
+        for user in self.users:
+            if canvas_id == user.id:
+                return True
+        return False
+
     def getAssignmentInfoStr(self):
         return "Assignment Name: " + self.assignment.name \
             + ", Due: " + self.assignment.due_at \
