@@ -110,18 +110,27 @@ class TestRunner:
         with open(self.setup_dir + '/grades.csv', 'w') as csvfile:
             grad_writer = csv.writer(csvfile)
             grad_writer.writerow(
-                ["name", "canvas_id", "github_user_name", "clone_to", "junit_result", "checkstyle_result", "score"])
+                ["name", "canvas_id", "github_user_name", "clone_to", "num_of_bad_collaborators", "junit_result", "checkstyle_result", "score"])
             for student in self.students:
                 student_dir = self.setup_dir + "/forks/" + student
-                junit_weight = 98 / 100
+
+                junit_weight = 96 / 100
                 junit_result = junitxmlparser.get_mut_tests_results(
                     self.num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml')
                 self.students[student].append(junit_result)
+
                 checkstyle_weight = 2 / 100
                 checkstyle_result = checkstyletools.get_checkstyle_results(student_dir + '/checkstyleoutfile')
+
+                collaborators_weight = 2 / 100
+                outOf = 3
+                collaborators_result = (max(0, (outOf - self.students[student][4])) / outOf) * 100
+
                 self.students[student].append(checkstyle_result)
-                assert (junit_weight + checkstyle_weight) == 1
-                result = (junit_weight * junit_result) + (checkstyle_weight * checkstyle_result)
+                assert (junit_weight + checkstyle_weight + collaborators_weight) == 1
+                result = (junit_weight * junit_result) + \
+                         (checkstyle_weight * checkstyle_result) + \
+                         (collaborators_weight * collaborators_result)
                 self.students[student].append(result)
                 print(self.students[student])
                 grad_writer.writerow(self.students[student])
@@ -137,7 +146,7 @@ class TestRunner:
                     output.write("\n")
                     # Compile students code
                     compile_command = ("cd " + student_dir + " && " +
-                                      "/usr/lib/jvm/java-20/bin/javac -Xlint:unchecked -cp " +
+                                      "/lib64/jvm/java-19/bin/javac -Xlint:unchecked -cp " +
                                       self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar -cp " +
                                       self.source_test_jar + " -d out/classes $(find src -name '*.java')")
                     output.write(compile_command)
@@ -149,7 +158,7 @@ class TestRunner:
                     for junit_to_run in self.junit_to_run_list:
                         index += 1
                         junit_tests_command = "cd " + student_dir + " && " + \
-                                          "/usr/lib/jvm/java-20/bin/java -jar " + \
+                                          "/lib64/jvm/java-19/bin/java -jar " + \
                                           self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar " + \
                                           "--reports-dir=build/test-results/test" + str(index) + " -cp " + \
                                           self.source_test_jar + " -cp out/classes --select-class=" + junit_to_run
@@ -160,7 +169,7 @@ class TestRunner:
                         output.write(stream.read())
                     # Run CheckStyle Tests
                     checkstyle_command = ("cd " + student_dir + " && " +
-                                      "/usr/lib/jvm/java-20/bin/java -jar " +
+                                      "/lib64/jvm/java-19/bin/java -jar " +
                                       self.setup_dir + "/tools/checkstyle-10.9.3-all.jar " +
                                       "-c=https://github.com/tztz8/HelloGradle/raw/master/ewu-cscd212-error.xml " +
                                       "-o=checkstyleoutfile $(find src -name '*.java')")
@@ -244,15 +253,24 @@ class TestRunner:
                         # not there
                         command = ["git", "clone", "--progress", url, clone_to]
                         # run command
-                        subprocess.run(command, stdout=outfile)  # FIXME: no output
+                        subprocess.run(command, stdout=outfile, stderr=outfile)  # FIXME: no output
                     else:
                         already_exists = True
                         os.system("cd " + clone_to + " && git restore . && git clean -f && git pull")
 
                     # TODO: get_collaborators() only Teacher check (add to dict for grading)
+                    collaborators = fork.get_collaborators()
+                    allowed_users = secret.GITHUB_ALLOWED_USERS.copy()
+                    allowed_users.append(github_user_name)
+                    num_of_bad_collaborators = 0
+                    if collaborators.totalCount > len(allowed_users):
+                        print(github_user_name, " has too many Collaborators")
+                        for collaborator in collaborators:
+                            if collaborator.login not in allowed_users:
+                                num_of_bad_collaborators += 1
 
                     # Done with getting a lab
-                    self.students[github_user_name] = ["Unknown", "4364626", github_user_name, clone_to]
+                    self.students[github_user_name] = ["Unknown", "4364626", github_user_name, clone_to, num_of_bad_collaborators]
                     print("User: ", github_user_name, ", already exists: ", already_exists, ", clone to: ", clone_to)
                     num_of_forks += 1
                 num_of_fork_pages += 1
@@ -271,8 +289,8 @@ class TestRunner:
                     print("Missing Student Fork: ", row)
                 studetn_folder = self.setup_dir + "/forks/" + row[3]
 
-                if num_of_students != 0:
-                    self.students[row[3]] = [row[0], row[1], row[3], self.setup_dir + "/forks/" + row[3]]
+                if num_of_students != 0 and row[3] not in self.students.keys():
+                    self.students[row[3]] = [row[0], row[1], row[3], self.setup_dir + "/forks/" + row[3], 0]
 
                 # Missing fork or src folder
                 if num_of_students != 0 and not (row[3] in self.students.keys() or os.path.exists(
