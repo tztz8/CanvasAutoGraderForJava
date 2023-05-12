@@ -11,6 +11,7 @@ import warnings
 from github import Github
 
 import currentLab
+import grade_weight
 from canvastools import CanvasTools
 
 import checkstyletools
@@ -101,8 +102,19 @@ class TestRunner:
         for student in self.students:
             if self.canvas_tools.is_in_course(int(self.students[student][1])):
                 print("Uploading Grade for ", self.students[student][0])
-                self.canvas_tools.update_grade(self.students[student][1],
-                                               self.students[student][len(self.students[student]) - 1])
+                message_string = "Auto Grader Output for {username}: " \
+                                 "Number of bad collaborators({nbcpoints}%): {nbc}, " \
+                                 "JUnit Score({junitpoints}%): {junit}, CheckStyle Score({checkpoints}%): {check}"
+                out_message = message_string.format(username=student,
+                                                    nbcpoints=grade_weight.Collaborators_Weight,
+                                                    nbc=self.students[student][4],
+                                                    junitpoints=grade_weight.JUnit_Weight,
+                                                    junit=self.students[student][5],
+                                                    checkpoints=grade_weight.CheckStyle_Weight,
+                                                    check=self.students[student][6])
+                self.canvas_tools.update_grade_with_comment(self.students[student][1],
+                                                            self.students[student][len(self.students[student]) - 1],
+                                                            out_message)
             else:
                 print(student, " not in class")
 
@@ -110,21 +122,22 @@ class TestRunner:
         with open(self.setup_dir + '/grades.csv', 'w') as csvfile:
             grad_writer = csv.writer(csvfile)
             grad_writer.writerow(
-                ["name", "canvas_id", "github_user_name", "clone_to", "num_of_bad_collaborators", "junit_result", "checkstyle_result", "score"])
+                ["name", "canvas_id", "github_user_name", "clone_to",
+                 "num_of_bad_collaborators", "junit_result", "checkstyle_result", "score"])
             for student in self.students:
                 student_dir = self.setup_dir + "/forks/" + student
 
-                junit_weight = 96 / 100
+                junit_weight = grade_weight.JUnit_Weight / 100
                 junit_result = junitxmlparser.get_mut_tests_results(
                     self.num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml')
                 self.students[student].append(junit_result)
 
-                checkstyle_weight = 2 / 100
+                checkstyle_weight = grade_weight.Collaborators_Weight / 100
                 checkstyle_result = checkstyletools.get_checkstyle_results(student_dir + '/checkstyleoutfile')
 
-                collaborators_weight = 2 / 100
-                outOf = 3
-                collaborators_result = (max(0, (outOf - self.students[student][4])) / outOf) * 100
+                collaborators_weight = grade_weight.CheckStyle_Weight / 100
+                out_of = grade_weight.Collaborators_Weight
+                collaborators_result = (max(0, (out_of - self.students[student][4])) / out_of) * 100
 
                 self.students[student].append(checkstyle_result)
                 assert (junit_weight + checkstyle_weight + collaborators_weight) == 1
@@ -244,21 +257,24 @@ class TestRunner:
                     github_user_name = fork.owner.login
                     # TODO: check if user in class_csv
                     # github_user_name class_csv
-
+                    outfile.write("Getting " + github_user_name + " fork")
+                    outfile.write("\n")
                     # Clone the fork (student repo)
                     url = fork.ssh_url
                     clone_to = self.setup_dir + "/forks/" + github_user_name
                     already_exists = False
                     if not os.path.exists(clone_to):
                         # not there
-                        command = ["git", "clone", "--progress", url, clone_to]
+                        # command = ["git", "clone", "--progress", url, clone_to]
+                        command = ["git", "clone", url, clone_to]
                         # run command
-                        subprocess.run(command, stdout=outfile, stderr=outfile)  # FIXME: no output
+                        subprocess.run(command, stdout=outfile, stderr=outfile)
                     else:
                         already_exists = True
-                        os.system("cd " + clone_to + " && git restore . && git clean -f && git pull")
+                        stream = os.popen("cd " + clone_to + " && git restore . && git clean -f && git pull")
+                        outfile.write(stream.read())
+                        outfile.write("\n")
 
-                    # TODO: get_collaborators() only Teacher check (add to dict for grading)
                     collaborators = fork.get_collaborators()
                     allowed_users = secret.GITHUB_ALLOWED_USERS.copy()
                     allowed_users.append(github_user_name)

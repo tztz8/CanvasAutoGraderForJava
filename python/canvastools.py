@@ -4,6 +4,7 @@ import shutil
 from canvasapi import Canvas
 from canvasapi.user import User
 
+import currentLab
 import secret
 
 
@@ -45,4 +46,20 @@ class CanvasTools:
 
         output_grade = (grade / 100) * points
 
-        submission.edit(submission={'posted_grade': output_grade})  # TODO: set grader auto
+        old_points = submission.score
+
+        if old_points is None or output_grade >= old_points:
+            submission.edit(submission={'posted_grade': output_grade})
+
+    def update_grade_with_comment(self, user_id, grade, comment: str):
+        # Grab user submission
+        submission = self.assignment.get_submission(user_id)
+
+        points = self.assignment.points_possible
+
+        output_grade = (grade / 100) * points
+
+        old_points = submission.score
+
+        if old_points is None or output_grade >= old_points:
+            submission.edit(submission={'posted_grade': output_grade}, comment={'text_comment': comment})

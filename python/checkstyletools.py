@@ -1,5 +1,7 @@
 import os.path
 
+import grade_weight
+
 
 def get_checkstyle_results(file):
     if os.path.exists(file):
@@ -8,9 +10,9 @@ def get_checkstyle_results(file):
             # for line in lines:
             #     print(line)
             # print(len(lines) - 2)
-            outOf = 15
-            numOfProblems = len(lines) - 2
-            result = (max(0, (outOf - numOfProblems)) / outOf) * 100
+            out_of = grade_weight.CHECKSTYLE_OUT_OF
+            num_of_problems = len(lines) - 2
+            result = (max(0, (out_of - num_of_problems)) / out_of) * 100
             return result
     else:
         return 0
