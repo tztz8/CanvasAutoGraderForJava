@@ -124,6 +124,7 @@ class TestRunner:
             grad_writer.writerow(
                 ["name", "canvas_id", "github_user_name", "clone_to",
                  "num_of_bad_collaborators", "junit_result", "checkstyle_result", "score"])
+            # TODO: add message to student
             for student in self.students:
                 student_dir = self.setup_dir + "/forks/" + student
 
@@ -255,6 +256,7 @@ class TestRunner:
                 for fork in forks:  # Each fork
                     # Check if in class (Use for when start repo is not just this class)
                     github_user_name = fork.owner.login
+                    # updated_at = fork.updated_at
                     # TODO: check if user in class_csv
                     # github_user_name class_csv
                     outfile.write("Getting " + github_user_name + " fork")
