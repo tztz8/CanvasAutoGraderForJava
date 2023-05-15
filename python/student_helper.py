@@ -27,12 +27,13 @@ class student_object:
         messages = ""
         for message in self.message:
             messages += message
-            messages += "\n Message:"
+            messages += "\nMessage:"
+        messages += " No more messages"
         message_string = "Auto Grader Output for {username}: \n" \
                          "Message: {messages} \n" \
                          "Results Collaborators({nbcpoints}%)(" \
-                         "Why: do you remove the class from collaborators on GitHub): {nbc}\n, " \
-                         "JUnit Score({junitpoints}%)(Why: do you pass junit tests): {junit}\n, " \
+                         "Why: do you remove the class from collaborators on GitHub): {nbc}\n " \
+                         "JUnit Score({junitpoints}%)(Why: do you pass junit tests): {junit}\n " \
                          "CheckStyle Score({checkpoints}%)(Why: do you use final, this, override): {check}"
         out_of = grade_weight.Collaborators_Weight
         collaborators_result = (max(0, (out_of - self.num_of_bad_collaborators)) / out_of) * 100
