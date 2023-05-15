@@ -17,10 +17,13 @@ from canvastools import CanvasTools
 import checkstyletools
 import junitxmlparser
 import secret
+from student_helper import student_object
 
 
 #  TODO: add docs
 class TestRunner:
+    students: list[student_object]
+
     def __init__(self):
         print("Maker Tester")
         self.gitHub_oauthToken = secret.GITHUB_OAUTH_TOKEN
@@ -35,8 +38,7 @@ class TestRunner:
 
         # self.class_csv = "../../../IdeaProjects/EWU/CSCD212S23"
         self.class_csv = currentLab.CLASS_CSV
-        self.students = dict()
-
+        self.students = []
         # self.source_test_jar = "../../../IdeaProjects/EWU/CSCD212S23/setup"
         self.source_test_jar = currentLab.TEST_JAR
         # self.junit_to_run_list = []
@@ -100,61 +102,49 @@ class TestRunner:
     def step_upload_grades(self):
         self._check_canvas_tools()
         for student in self.students:
-            if self.canvas_tools.is_in_course(int(self.students[student][1])):
-                print("Uploading Grade for ", self.students[student][0])
-                message_string = "Auto Grader Output for {username}: " \
-                                 "Number of bad collaborators({nbcpoints}%): {nbc}, " \
-                                 "JUnit Score({junitpoints}%): {junit}, CheckStyle Score({checkpoints}%): {check}"
-                out_message = message_string.format(username=student,
-                                                    nbcpoints=grade_weight.Collaborators_Weight,
-                                                    nbc=self.students[student][4],
-                                                    junitpoints=grade_weight.JUnit_Weight,
-                                                    junit=self.students[student][5],
-                                                    checkpoints=grade_weight.CheckStyle_Weight,
-                                                    check=self.students[student][6])
-                self.canvas_tools.update_grade_with_comment(self.students[student][1],
-                                                            self.students[student][len(self.students[student]) - 1],
-                                                            out_message)
+            if self.canvas_tools.is_in_course(student.canvas_id):
+                print("Uploading Grade for ", student.github_user_name)
+                self.canvas_tools.update_grade_with_comment(student.canvas_id,
+                                                            student.score,
+                                                            student.get_message())
             else:
-                print(student, " not in class")
+                print(student.github_user_name, " not in class")
 
     def step_read_tests(self):
         with open(self.setup_dir + '/grades.csv', 'w') as csvfile:
             grad_writer = csv.writer(csvfile)
-            grad_writer.writerow(
-                ["name", "canvas_id", "github_user_name", "clone_to",
-                 "num_of_bad_collaborators", "junit_result", "checkstyle_result", "score"])
+            grad_writer.writerow(self.students[0].get_row_name())
             # TODO: add message to student
             for student in self.students:
-                student_dir = self.setup_dir + "/forks/" + student
+                student_dir = self.setup_dir + "/forks/" + student.github_user_name
 
                 junit_weight = grade_weight.JUnit_Weight / 100
                 junit_result = junitxmlparser.get_mut_tests_results(
                     self.num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml')
-                self.students[student].append(junit_result)
+                student.junit_result = junit_result
 
                 checkstyle_weight = grade_weight.Collaborators_Weight / 100
                 checkstyle_result = checkstyletools.get_checkstyle_results(student_dir + '/checkstyleoutfile')
+                student.checkstyle_result = checkstyle_result
 
                 collaborators_weight = grade_weight.CheckStyle_Weight / 100
                 out_of = grade_weight.Collaborators_Weight
-                collaborators_result = (max(0, (out_of - self.students[student][4])) / out_of) * 100
+                collaborators_result = (max(0, (out_of - student.num_of_bad_collaborators)) / out_of) * 100
 
-                self.students[student].append(checkstyle_result)
                 assert (junit_weight + checkstyle_weight + collaborators_weight) == 1
                 result = (junit_weight * junit_result) + \
                          (checkstyle_weight * checkstyle_result) + \
                          (collaborators_weight * collaborators_result)
-                self.students[student].append(result)
-                print(self.students[student])
-                grad_writer.writerow(self.students[student])
+                student.score = result
+                print(student.get_row())
+                grad_writer.writerow(student.get_row())
 
     def step_run_tests(self):
         for student in self.students:
-            if os.path.exists(f"{self.setup_dir}/forks/{student}"):
-                with open(f"{self.setup_dir}/forks/{student}/testoutput.txt", "w") as output:
-                    student_dir = self.setup_dir + "/forks/" + student
-                    output.write(student)
+            if os.path.exists(f"{self.setup_dir}/forks/{student.github_user_name}"):
+                with open(f"{self.setup_dir}/forks/{student.github_user_name}/testoutput.txt", "w") as output:
+                    student_dir = self.setup_dir + "/forks/" + student.github_user_name
+                    output.write(student.github_user_name)
                     output.write("\n")
                     output.write(student_dir)
                     output.write("\n")
@@ -191,9 +181,9 @@ class TestRunner:
                     output.write("\n")
                     stream = os.popen(checkstyle_command)
                     output.write(stream.read())
-                    print(student)
+                    print(student.github_user_name)
             else:
-                print("missing ", student)
+                print("missing ", student.github_user_name)
 
     def step_setup_tests(self):
         # make tool dir, change into tool dir, download file
@@ -211,7 +201,7 @@ class TestRunner:
     def step_setup_labs(self):
         # [ name for name in os.listdir(setup_dir) if os.path.isdir(os.path.join(setup_dir, name)) ]
         for student in self.students:
-            student_dir = self.setup_dir + "/forks/" + student
+            student_dir = self.setup_dir + "/forks/" + student.github_user_name
             if os.path.exists(student_dir + "/out"):
                 shutil.rmtree(student_dir + "/out")  # If student modify/ignore the .gitignore file
             if os.path.exists(student_dir + "/.idea"):
@@ -220,31 +210,34 @@ class TestRunner:
             if os.path.exists(student_dir + "/tests"):
                 shutil.rmtree(student_dir + "/docs")  # stop finding files in here that not needed
             else:
-                print(student, " is missing docs folder")
+                print(student.github_user_name, " is missing docs folder")
 
             if os.path.exists(student_dir + "/tests"):
                 shutil.rmtree(student_dir + "/tests")  # remove old tests (also the student may modify the tests)
             else:
-                print(student, " is missing tests folder")
+                print(student.github_user_name, " is missing tests folder")
 
             if os.path.exists(student_dir + "/*.iml"):
                 os.remove(student_dir + "/*.iml")  # If I need to grade make it better
 
             if os.path.exists(student_dir + "/src"):
-                print(student, " Setup Done")
+                print(student.github_user_name, " Setup Done")
             else:
                 found = False
-                found = self._step_get_student_canvas(found, self.students[student], student_dir)
+                found = self._step_get_student_canvas(found, student, student_dir)
                 if found:
-                    print(student, " Was Missing src folder")
+                    print(student.github_user_name, " Was Missing src folder")
                 else:
-                    print(student, " Missing src folder")
+                    student.message.append("Missing src folder")
+                    print(student.github_user_name, " Missing src folder")
 
     def step_get_labs(self):
         # Setup GitHub API
         self.github_tool = Github(self.gitHub_oauthToken)
         self.start_repo = self.github_tool.get_repo(self.gitHub_start_repo)
         forks_pages = self.start_repo.get_forks()
+        # Info
+        github_users = dict()
         # Setup loop
         num_of_forks = 0
         num_of_fork_pages = 0
@@ -254,6 +247,8 @@ class TestRunner:
         with open(f"{self.setup_dir}/gitoutput.txt", "w") as outfile:  # debug output file
             while len(forks) > 0:  # GitHub API will only give page of forks at a time
                 for fork in forks:  # Each fork
+                    student = student_object()
+                    student.message = []
                     # Check if in class (Use for when start repo is not just this class)
                     github_user_name = fork.owner.login
                     # updated_at = fork.updated_at
@@ -283,12 +278,19 @@ class TestRunner:
                     num_of_bad_collaborators = 0
                     if collaborators.totalCount > len(allowed_users):
                         print(github_user_name, " has too many Collaborators")
+                        student.message.append("has too many Collaborators in GitHub")
                         for collaborator in collaborators:
                             if collaborator.login not in allowed_users:
                                 num_of_bad_collaborators += 1
 
                     # Done with getting a lab
-                    self.students[github_user_name] = ["Unknown", "4364626", github_user_name, clone_to, num_of_bad_collaborators]
+                    self.students.append(student)
+                    student.name = "Unknown"
+                    student.canvas_id = 4364626
+                    student.github_user_name = github_user_name
+                    github_users[github_user_name] = len(self.students) - 1
+                    student.clone_to = clone_to
+                    student.num_of_bad_collaborators = num_of_bad_collaborators
                     print("User: ", github_user_name, ", already exists: ", already_exists, ", clone to: ", clone_to)
                     num_of_forks += 1
                 num_of_fork_pages += 1
@@ -300,21 +302,30 @@ class TestRunner:
             csv_reader = csv.reader(class_csv_file, delimiter=',')
             self._check_canvas_tools()
             for row in csv_reader:
-                if num_of_students != 0 and row[3] in self.students.keys():
-                    self.students[row[3]][0] = row[0]
-                    self.students[row[3]][1] = row[1]
+                if num_of_students != 0 and row[3] in github_users.keys():
+                    self.students[github_users[row[3]]].name = row[0]
+                    self.students[github_users[row[3]]].canvas_id = int(row[1])
                 elif num_of_students != 0:
                     print("Missing Student Fork: ", row)
                 studetn_folder = self.setup_dir + "/forks/" + row[3]
 
-                if num_of_students != 0 and row[3] not in self.students.keys():
-                    self.students[row[3]] = [row[0], row[1], row[3], self.setup_dir + "/forks/" + row[3], 0]
+                if num_of_students != 0 and row[3] not in github_users.keys():
+                    github_users[row[3]] = len(self.students)
+                    # [row[0], row[1], row[3], self.setup_dir + "/forks/" + row[3], 0]
+                    student = student_object()
+                    self.students.append(student)
+                    student.name = row[0]
+                    student.canvas_id = int(row[1])
+                    student.github_user_name = row[3]
+                    student.clone_to = self.setup_dir + "/forks/" + row[3]
+                    student.num_of_bad_collaborators = 0
+                    student.message = ["Missing Github Fork"]
 
                 # Missing fork or src folder
-                if num_of_students != 0 and not (row[3] in self.students.keys() or os.path.exists(
+                if num_of_students != 0 and not (row[3] in github_users.keys() or os.path.exists(
                         studetn_folder + "/src")):
                     found_src_folder = False
-                    found_src_folder = self._step_get_student_canvas(found_src_folder, self.students[row[3]], studetn_folder)
+                    found_src_folder = self._step_get_student_canvas(found_src_folder, self.students[github_users[row[3]]], studetn_folder)
                     # Check if src folder is there
                     if os.path.exists(studetn_folder + "/src"):
                         # move src folder
@@ -332,10 +343,10 @@ class TestRunner:
               ", Number of students: ", num_of_students)
         return self.students
 
-    def _step_get_student_canvas(self, found_src_folder, row, studetn_folder):
-        if self.canvas_tools.is_in_course(int(row[1])):
+    def _step_get_student_canvas(self, found_src_folder, student: student_object, studetn_folder):
+        if self.canvas_tools.is_in_course(student.canvas_id):
             # get canvas submission
-            submission = self.canvas_tools.assignment.get_submission(row[1])
+            submission = self.canvas_tools.assignment.get_submission(student.canvas_id)
             if not os.path.exists(studetn_folder):
                 os.mkdir(studetn_folder)
             if not os.path.exists(studetn_folder + "/download"):
@@ -347,12 +358,12 @@ class TestRunner:
                 if file_name_parts[len(file_name_parts) - 1] == "zip":
                     # unzip submission
                     shutil.unpack_archive(output_file, studetn_folder)
-                    if os.path.exists(self.setup_dir + "/forks/" + row[2] + "/__MACOSX"):
-                        shutil.rmtree(self.setup_dir + "/forks/" + row[2] + "/__MACOSX")
+                    if os.path.exists(self.setup_dir + "/forks/" + student.github_user_name + "/__MACOSX"):
+                        shutil.rmtree(self.setup_dir + "/forks/" + student.github_user_name + "/__MACOSX")
                     # move src folder
                     found_src_folder = self.move_src_folder(found_src_folder, studetn_folder)
         else:
-            print("Student not in canvas: ", row)
+            print("Student not in canvas: ", student.github_user_name)
         return found_src_folder
 
     def move_src_folder(self, found_src_folder, studetn_folder):
