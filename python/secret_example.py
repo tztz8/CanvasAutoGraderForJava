@@ -8,3 +8,5 @@ COURSE_ID = "1234567" # TODO: from GitHub class Organization Secrets
 # TODO: GitHub teacher Team
 # TODO: GitHub class Team
 # TODO: GitHub class Organization
+GITHUB_OAUTH_TOKEN = "ghp_token"
+GITHUB_ALLOWED_USERS = ["tztz8", "stusteiner"]
