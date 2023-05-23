@@ -136,6 +136,7 @@ class TestRunner:
                          (checkstyle_weight * checkstyle_result) + \
                          (collaborators_weight * collaborators_result)
                 student.score = result
+                student.old_score = self.canvas_tools.get_grade(student.canvas_id)
                 print(student.get_row())
                 grad_writer.writerow(student.get_row())
 
@@ -150,7 +151,7 @@ class TestRunner:
                     output.write("\n")
                     # Compile students code
                     compile_command = ("cd " + student_dir + " && " +
-                                      "/lib64/jvm/java-19/bin/javac -Xlint:unchecked -cp " +
+                                      currentLab.JAVA_PATH + "c -Xlint:unchecked -cp " +
                                       self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar -cp " +
                                       self.source_test_jar + " -d out/classes $(find src -name '*.java')")
                     output.write(compile_command)
@@ -162,7 +163,7 @@ class TestRunner:
                     for junit_to_run in self.junit_to_run_list:
                         index += 1
                         junit_tests_command = "cd " + student_dir + " && " + \
-                                          "/lib64/jvm/java-19/bin/java -jar " + \
+                                          currentLab.JAVA_PATH + " -jar " + \
                                           self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar " + \
                                           "--reports-dir=build/test-results/test" + str(index) + " -cp " + \
                                           self.source_test_jar + " -cp out/classes --select-class=" + junit_to_run
@@ -173,7 +174,7 @@ class TestRunner:
                         output.write(stream.read())
                     # Run CheckStyle Tests
                     checkstyle_command = ("cd " + student_dir + " && " +
-                                      "/lib64/jvm/java-19/bin/java -jar " +
+                                      currentLab.JAVA_PATH + " -jar " +
                                       self.setup_dir + "/tools/checkstyle-10.9.3-all.jar " +
                                       "-c=https://github.com/tztz8/HelloGradle/raw/master/ewu-cscd212-error.xml " +
                                       "-o=checkstyleoutfile $(find src -name '*.java')")
@@ -291,6 +292,7 @@ class TestRunner:
                     github_users[github_user_name] = len(self.students) - 1
                     student.clone_to = clone_to
                     student.num_of_bad_collaborators = num_of_bad_collaborators
+                    student.old_score = 0
                     print("User: ", github_user_name, ", already exists: ", already_exists, ", clone to: ", clone_to)
                     num_of_forks += 1
                 num_of_fork_pages += 1
@@ -319,6 +321,7 @@ class TestRunner:
                     student.github_user_name = row[3]
                     student.clone_to = self.setup_dir + "/forks/" + row[3]
                     student.num_of_bad_collaborators = 0
+                    student.old_score = 0
                     student.message = ["Missing Github Fork"]
 
                 # Missing fork or src folder

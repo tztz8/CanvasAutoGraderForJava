@@ -11,15 +11,19 @@ class student_object:
     checkstyle_result: float
     score: float
 
+    old_score: float
+
     message: list[str]
 
     def get_row_name(self):
         return ["name", "canvas_id", "github_user_name", "clone_to",
+                "old_score",
                 "num_of_bad_collaborators", "junit_result", "checkstyle_result",
                 "score"]
 
     def get_row(self):
         return [self.name, self.canvas_id, self.github_user_name, self.clone_to,
+                self.old_score,
                 self.num_of_bad_collaborators, self.junit_result, self.checkstyle_result,
                 self.score]
 

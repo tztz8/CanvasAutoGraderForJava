@@ -38,6 +38,18 @@ class CanvasTools:
             endPart = fileName[len(fileName)]
             print(endPart)
 
+    def get_grade(self, user_id):
+        if self.is_in_course(user_id):
+            # Grab user submission
+            submission = self.assignment.get_submission(user_id)
+            old_points = submission.score
+            if old_points is None:
+                return 0
+            else:
+                return old_points
+        else:
+            return 0
+
     def update_grade(self, user_id, grade):
         # Grab user submission
         submission = self.assignment.get_submission(user_id)
@@ -61,5 +73,6 @@ class CanvasTools:
 
         old_points = submission.score
 
+        print(user_id, ": original grade: ", old_points, ", new grade: ", output_grade)
         if old_points is None or output_grade >= old_points:
             submission.edit(submission={'posted_grade': output_grade}, comment={'text_comment': comment})

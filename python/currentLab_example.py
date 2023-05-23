@@ -11,3 +11,4 @@ TEST_LIST = [
 NUM_OF_TESTS = 1
 CANVAS_HW_ID = 123456
 NUM_OF_JUNIT_TESTS = 22
+JAVA_PATH = "/usr/lib/jvm/java-20/bin/java"
