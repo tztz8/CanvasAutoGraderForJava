@@ -120,7 +120,7 @@ class TestRunner:
 
                 junit_weight = grade_weight.JUnit_Weight / 100
                 junit_result = junitxmlparser.get_mut_tests_results(
-                    self.num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml')
+                    self.num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml', student)
                 student.junit_result = junit_result
 
                 checkstyle_weight = grade_weight.Collaborators_Weight / 100

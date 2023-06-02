@@ -9,13 +9,6 @@ async fn main() {
     let secret = Config::builder()
         .add_source(config::File::with_name("secret.config"))
         .build().expect("No Secret Config File given");
-    //
-    // let base_url: std::string = secret.get("base_url")
-    //     .expect("No Base URL in Secret Config");
-    //
-    // let canvas_token = String::from(secret.get("canvas_token")
-    //     .expect("No Canvas Token in Secret Config"));
-
 
     let base_url:String = secret.get("base_url")
         .expect("no base url in Secret Config");
