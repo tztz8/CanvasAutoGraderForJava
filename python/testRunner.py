@@ -7,6 +7,7 @@ import tkinter.filedialog
 import tkinter.simpledialog
 import tkinter.messagebox
 import warnings
+import time
 
 from github import Github
 
@@ -121,6 +122,7 @@ class TestRunner:
                 junit_weight = grade_weight.JUnit_Weight / 100
                 junit_result = junitxmlparser.get_mut_tests_results(
                     self.num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml', student)
+                junit_result = min(100, max(0, junit_result))
                 student.junit_result = junit_result
 
                 checkstyle_weight = grade_weight.Collaborators_Weight / 100
@@ -129,7 +131,7 @@ class TestRunner:
 
                 collaborators_weight = grade_weight.CheckStyle_Weight / 100
                 out_of = grade_weight.Collaborators_Weight
-                collaborators_result = (max(0, (out_of - student.num_of_bad_collaborators)) / out_of) * 100
+                collaborators_result = min(100, ((max(0, (out_of - student.num_of_bad_collaborators)) / out_of) * 100))
 
                 assert (junit_weight + checkstyle_weight + collaborators_weight) == 1
                 result = (junit_weight * junit_result) + \
@@ -141,48 +143,52 @@ class TestRunner:
                 grad_writer.writerow(student.get_row())
 
     def step_run_tests(self):
+        # TODO: use containerized (Ex Docker) to test
         for student in self.students:
             if os.path.exists(f"{self.setup_dir}/forks/{student.github_user_name}"):
-                with open(f"{self.setup_dir}/forks/{student.github_user_name}/testoutput.txt", "w") as output:
-                    student_dir = self.setup_dir + "/forks/" + student.github_user_name
-                    output.write(student.github_user_name)
-                    output.write("\n")
-                    output.write(student_dir)
-                    output.write("\n")
-                    # Compile students code
-                    compile_command = ("cd " + student_dir + " && " +
-                                      currentLab.JAVA_PATH + "c -Xlint:unchecked -cp " +
-                                      self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar -cp " +
-                                      self.source_test_jar + " -d out/classes $(find src -name '*.java')")
-                    output.write(compile_command)
-                    output.write("\n")
-                    stream = os.popen(compile_command)
-                    output.write(stream.read())
-                    # Run JUnit Tests
-                    index = 0
-                    for junit_to_run in self.junit_to_run_list:
-                        index += 1
-                        junit_tests_command = "cd " + student_dir + " && " + \
-                                          currentLab.JAVA_PATH + " -jar " + \
-                                          self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar " + \
-                                          "--reports-dir=build/test-results/test" + str(index) + " -cp " + \
-                                          self.source_test_jar + " -cp out/classes --select-class=" + junit_to_run
-                        print(junit_tests_command)
-                        output.write(junit_tests_command)
+                if student.canvas_id != secret.COURSE_TEST_STUDENT_ID:
+                    with open(f"{self.setup_dir}/forks/{student.github_user_name}/testoutput.txt", "w") as output:
+                        student_dir = self.setup_dir + "/forks/" + student.github_user_name
+                        output.write(student.github_user_name)
                         output.write("\n")
-                        stream = os.popen(junit_tests_command)
+                        output.write(student_dir)
+                        output.write("\n")
+                        # Compile students code
+                        compile_command = ("cd " + student_dir + " && " +
+                                          currentLab.JAVA_PATH + "c -Xlint:unchecked -cp " +
+                                          self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar -cp " +
+                                          self.source_test_jar + " -d out/classes $(find src -name '*.java')")
+                        output.write(compile_command)
+                        output.write("\n")
+                        stream = os.popen(compile_command)
                         output.write(stream.read())
-                    # Run CheckStyle Tests
-                    checkstyle_command = ("cd " + student_dir + " && " +
-                                      currentLab.JAVA_PATH + " -jar " +
-                                      self.setup_dir + "/tools/checkstyle-10.9.3-all.jar " +
-                                      "-c=https://github.com/tztz8/HelloGradle/raw/master/ewu-cscd212-error.xml " +
-                                      "-o=checkstyleoutfile $(find src -name '*.java')")
-                    output.write(checkstyle_command)
-                    output.write("\n")
-                    stream = os.popen(checkstyle_command)
-                    output.write(stream.read())
-                    print(student.github_user_name)
+                        # Run JUnit Tests
+                        index = 0
+                        for junit_to_run in self.junit_to_run_list:
+                            index += 1
+                            junit_tests_command = "cd " + student_dir + " && " + \
+                                              currentLab.JAVA_PATH + " -jar " + \
+                                              self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar " + \
+                                              "--reports-dir=build/test-results/test" + str(index) + " -cp " + \
+                                              self.source_test_jar + " -cp out/classes --select-class=" + junit_to_run
+                            print(junit_tests_command)
+                            output.write(junit_tests_command)
+                            output.write("\n")
+                            stream = os.popen(junit_tests_command)
+                            output.write(stream.read())
+                        # Run CheckStyle Tests
+                        checkstyle_command = ("cd " + student_dir + " && " +
+                                          currentLab.JAVA_PATH + " -jar " +
+                                          self.setup_dir + "/tools/checkstyle-10.9.3-all.jar " +
+                                          "-c=https://github.com/tztz8/HelloGradle/raw/master/ewu-cscd212-error.xml " +     # Checkstyle for CSCD212
+                                          "-o=checkstyleoutfile $(find src -name '*.java')")
+                        output.write(checkstyle_command)
+                        output.write("\n")
+                        stream = os.popen(checkstyle_command)
+                        output.write(stream.read())
+                        print(student.github_user_name)
+                else:
+                    print("not in class, skipping")
             else:
                 print("missing ", student.github_user_name)
 
@@ -208,11 +214,12 @@ class TestRunner:
             if os.path.exists(student_dir + "/.idea"):
                 shutil.rmtree(student_dir + "/.idea", ignore_errors=True)  # If I need to grade make it better
 
-            if os.path.exists(student_dir + "/tests"):
+            if os.path.exists(student_dir + "/docs"):
                 shutil.rmtree(student_dir + "/docs")  # stop finding files in here that not needed
             else:
                 print(student.github_user_name, " is missing docs folder")
 
+            # TODO: add flag
             if os.path.exists(student_dir + "/tests"):
                 shutil.rmtree(student_dir + "/tests")  # remove old tests (also the student may modify the tests)
             else:
@@ -247,6 +254,7 @@ class TestRunner:
             os.mkdir(self.setup_dir)
         with open(f"{self.setup_dir}/gitoutput.txt", "w") as outfile:  # debug output file
             while len(forks) > 0:  # GitHub API will only give page of forks at a time
+                # TODO: fork only students from csv file (let us use starting repo that not only for this class)
                 for fork in forks:  # Each fork
                     student = student_object()
                     student.message = []
@@ -261,6 +269,7 @@ class TestRunner:
                     url = fork.ssh_url
                     clone_to = self.setup_dir + "/forks/" + github_user_name
                     already_exists = False
+                    timer_start = time.time()
                     if not os.path.exists(clone_to):
                         # not there
                         # command = ["git", "clone", "--progress", url, clone_to]
@@ -273,21 +282,30 @@ class TestRunner:
                         outfile.write(stream.read())
                         outfile.write("\n")
 
+                    # Wait for git (There is a limit of git clone can be done at a time)
+                    while abs(time.time() - timer_start) < 15:
+                        pass
+
                     collaborators = fork.get_collaborators()
                     allowed_users = secret.GITHUB_ALLOWED_USERS.copy()
                     allowed_users.append(github_user_name)
                     num_of_bad_collaborators = 0
-                    if collaborators.totalCount > len(allowed_users):
-                        print(github_user_name, " has too many Collaborators")
-                        student.message.append("has too many Collaborators in GitHub")
-                        for collaborator in collaborators:
-                            if collaborator.login not in allowed_users:
-                                num_of_bad_collaborators += 1
+                    try:
+                        if collaborators.totalCount > len(allowed_users):
+                            print(github_user_name, " has too many Collaborators")
+                            student.message.append("has too many Collaborators in GitHub")
+                            for collaborator in collaborators:
+                                if collaborator.login not in allowed_users:
+                                    num_of_bad_collaborators += 1
+                    except:
+                        print(github_user_name, " unable to read Collaborators")
+                        print(github_user_name, " adding 50 to bad collaborators")
+                        num_of_bad_collaborators += 50
 
                     # Done with getting a lab
                     self.students.append(student)
                     student.name = "Unknown"
-                    student.canvas_id = 4364626
+                    student.canvas_id = secret.COURSE_TEST_STUDENT_ID
                     student.github_user_name = github_user_name
                     github_users[github_user_name] = len(self.students) - 1
                     student.clone_to = clone_to

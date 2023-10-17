@@ -13,7 +13,7 @@ def get_checkstyle_results(file):
             out_of = grade_weight.CHECKSTYLE_OUT_OF
             num_of_problems = len(lines) - 2
             result = (max(0, (out_of - num_of_problems)) / out_of) * 100
-            return result
+            return min(100, result)
     else:
         return 0
 

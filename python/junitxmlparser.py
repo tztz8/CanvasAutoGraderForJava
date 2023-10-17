@@ -39,7 +39,12 @@ def get_messages(tree, student):
             message = "Test: "
             message += test.get("name")
             message += ", \t Error: "
-            message += err.get("message")
+            # TODO: FIX TypeError: can only concatenate str (not "NoneType") to str
+            # FIXME: Did I fix it?
+            if (err.get("message") is None):
+                message += "Unable to read Error Message"
+            else:
+                message += err.get("message")
             if student is not None:
                 student.message.append(message)
             else:
