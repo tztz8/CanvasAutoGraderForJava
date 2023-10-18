@@ -259,7 +259,7 @@ class TestRunner:
                     student = student_object()
                     student.message = []
                     # Check if in class (Use for when start repo is not just this class)
-                    github_user_name = fork.owner.login
+                    github_user_name = fork.owner.login.lower()
                     # updated_at = fork.updated_at
                     # TODO: check if user in class_csv
                     # github_user_name class_csv
@@ -322,31 +322,31 @@ class TestRunner:
             csv_reader = csv.reader(class_csv_file, delimiter=',')
             self._check_canvas_tools()
             for row in csv_reader:
-                if num_of_students != 0 and row[3] in github_users.keys():
-                    self.students[github_users[row[3]]].name = row[0]
-                    self.students[github_users[row[3]]].canvas_id = int(row[1])
+                if num_of_students != 0 and row[3].lower() in github_users.keys():
+                    self.students[github_users[row[3].lower()]].name = row[0]
+                    self.students[github_users[row[3].lower()]].canvas_id = int(row[1])
                 elif num_of_students != 0:
                     print("Missing Student Fork: ", row)
-                studetn_folder = self.setup_dir + "/forks/" + row[3]
+                studetn_folder = self.setup_dir + "/forks/" + row[3].lower()
 
-                if num_of_students != 0 and row[3] not in github_users.keys():
-                    github_users[row[3]] = len(self.students)
-                    # [row[0], row[1], row[3], self.setup_dir + "/forks/" + row[3], 0]
+                if num_of_students != 0 and row[3].lower() not in github_users.keys():
+                    github_users[row[3].lower()] = len(self.students)
+                    # [row[0], row[1], row[3]..lower(), self.setup_dir + "/forks/" + row[3]..lower(), 0]
                     student = student_object()
                     self.students.append(student)
                     student.name = row[0]
                     student.canvas_id = int(row[1])
-                    student.github_user_name = row[3]
-                    student.clone_to = self.setup_dir + "/forks/" + row[3]
+                    student.github_user_name = row[3].lower()
+                    student.clone_to = self.setup_dir + "/forks/" + row[3].lower()
                     student.num_of_bad_collaborators = 0
                     student.old_score = 0
                     student.message = ["Missing Github Fork"]
 
                 # Missing fork or src folder
-                if num_of_students != 0 and not (row[3] in github_users.keys() or os.path.exists(
+                if num_of_students != 0 and not (row[3].lower() in github_users.keys() or os.path.exists(
                         studetn_folder + "/src")):
                     found_src_folder = False
-                    found_src_folder = self._step_get_student_canvas(found_src_folder, self.students[github_users[row[3]]], studetn_folder)
+                    found_src_folder = self._step_get_student_canvas(found_src_folder, self.students[github_users[row[3].lower()]], studetn_folder)
                     # Check if src folder is there
                     if os.path.exists(studetn_folder + "/src"):
                         # move src folder
