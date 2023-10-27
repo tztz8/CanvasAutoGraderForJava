@@ -127,20 +127,31 @@ class TestRunner:
 
                 checkstyle_weight = grade_weight.Collaborators_Weight / 100
                 checkstyle_result = checkstyletools.get_checkstyle_results(student_dir + '/checkstyleoutfile')
+                if not student.has_src:
+                    checkstyle_result = 0
                 student.checkstyle_result = checkstyle_result
 
                 collaborators_weight = grade_weight.CheckStyle_Weight / 100
                 out_of = grade_weight.Collaborators_Weight
                 collaborators_result = min(100, ((max(0, (out_of - student.num_of_bad_collaborators)) / out_of) * 100))
+                if (not student.has_src) and (not student.has_fork):
+                    collaborators_result = 0
 
                 assert (junit_weight + checkstyle_weight + collaborators_weight) == 1
                 result = (junit_weight * junit_result) + \
                          (checkstyle_weight * checkstyle_result) + \
                          (collaborators_weight * collaborators_result)
                 student.score = result
+                if (not student.has_src) and (not student.has_fork):
+                    assert result == 0
                 student.old_score = self.canvas_tools.get_grade(student.canvas_id)
-                print(student.get_row())
+                print(student.get_row_message())
                 grad_writer.writerow(student.get_row())
+        with open(self.setup_dir + '/grades_with_message.csv', 'w') as csvfile:
+            grad_writer = csv.writer(csvfile)
+            grad_writer.writerow(self.students[0].get_row_message_name())
+            for student in self.students:
+                grad_writer.writerow(student.get_row_message())
 
     def step_run_tests(self):
         # TODO: use containerized (Ex Docker) to test
@@ -228,6 +239,7 @@ class TestRunner:
             if os.path.exists(student_dir + "/*.iml"):
                 os.remove(student_dir + "/*.iml")  # If I need to grade make it better
 
+            student.has_src = True
             if os.path.exists(student_dir + "/src"):
                 print(student.github_user_name, " Setup Done")
             else:
@@ -237,6 +249,7 @@ class TestRunner:
                     print(student.github_user_name, " Was Missing src folder")
                 else:
                     student.message.append("Missing src folder")
+                    student.has_src = False
                     print(student.github_user_name, " Missing src folder")
 
     def step_get_labs(self):
@@ -246,6 +259,16 @@ class TestRunner:
         forks_pages = self.start_repo.get_forks()
         # Info
         github_users = dict()
+        github_username_in_class = list()
+        # Get class only
+        row_num = 0
+        with open(self.class_csv, 'r') as class_csv_file:
+            csv_reader = csv.reader(class_csv_file, delimiter=',')
+            self._check_canvas_tools()
+            for row in csv_reader:
+                if row_num != 0:
+                    github_username_in_class.append(row[3].lower())
+                row_num += 1
         # Setup loop
         num_of_forks = 0
         num_of_fork_pages = 0
@@ -256,10 +279,12 @@ class TestRunner:
             while len(forks) > 0:  # GitHub API will only give page of forks at a time
                 # TODO: fork only students from csv file (let us use starting repo that not only for this class)
                 for fork in forks:  # Each fork
-                    student = student_object()
-                    student.message = []
                     # Check if in class (Use for when start repo is not just this class)
                     github_user_name = fork.owner.login.lower()
+                    if github_user_name not in github_username_in_class:
+                        continue
+                    student = student_object()
+                    student.message = []
                     # updated_at = fork.updated_at
                     # TODO: check if user in class_csv
                     # github_user_name class_csv
@@ -311,6 +336,7 @@ class TestRunner:
                     student.clone_to = clone_to
                     student.num_of_bad_collaborators = num_of_bad_collaborators
                     student.old_score = 0
+                    student.has_fork = True
                     print("User: ", github_user_name, ", already exists: ", already_exists, ", clone to: ", clone_to)
                     num_of_forks += 1
                 num_of_fork_pages += 1
@@ -340,6 +366,7 @@ class TestRunner:
                     student.clone_to = self.setup_dir + "/forks/" + row[3].lower()
                     student.num_of_bad_collaborators = 0
                     student.old_score = 0
+                    student.has_fork = False
                     student.message = ["Missing Github Fork"]
 
                 # Missing fork or src folder

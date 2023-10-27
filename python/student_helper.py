@@ -13,6 +13,9 @@ class student_object:
 
     old_score: float
 
+    has_src: bool
+    has_fork: bool
+
     message: list[str]
 
     def get_row_name(self):
@@ -26,6 +29,16 @@ class student_object:
                 self.old_score,
                 self.num_of_bad_collaborators, self.junit_result, self.checkstyle_result,
                 self.score]
+
+    def get_row_message_name(self):
+        row = self.get_row_name()
+        row.append("message")
+        return row
+
+    def get_row_message(self):
+        row = self.get_row()
+        row.append(self.get_message())
+        return row
 
     def get_message(self):
         messages = ""
