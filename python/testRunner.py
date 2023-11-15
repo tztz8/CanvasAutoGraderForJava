@@ -53,6 +53,7 @@ class TestRunner:
         # self.canvas_assignment_id = None
         self.canvas_assignment_id = currentLab.CANVAS_HW_ID
         self.canvas_tools = None
+        self._check_canvas_tools()
 
     def _check_canvas_tools(self):
         if self.canvas_assignment_id is None:
@@ -296,20 +297,28 @@ class TestRunner:
                     already_exists = False
                     timer_start = time.time()
                     if not os.path.exists(clone_to):
-                        # not there
-                        # command = ["git", "clone", "--progress", url, clone_to]
-                        command = ["git", "clone", url, clone_to]
-                        # run command
-                        subprocess.run(command, stdout=outfile, stderr=outfile)
+                        # Wait for git (There is a limit of git clone can be done at a time)
+                        # If it is there it is all good
+                        while (abs(time.time() - timer_start) < 90) and (not os.path.exists(clone_to)):
+                            timer_start_in = time.time()
+                            # not there
+                            # command = ["git", "clone", "--progress", url, clone_to]
+                            command = ["git", "clone", url, clone_to]
+                            # run command
+                            subprocess.run(command, stdout=outfile, stderr=outfile)
+                            time_to_wait = 2
+                            if not os.path.exists(clone_to):
+                                time_to_wait = 10
+                            while abs(time.time() - timer_start_in) < time_to_wait:
+                                pass
                     else:
                         already_exists = True
                         stream = os.popen("cd " + clone_to + " && git restore . && git clean -f && git pull")
                         outfile.write(stream.read())
                         outfile.write("\n")
-
-                    # Wait for git (There is a limit of git clone can be done at a time)
-                    while abs(time.time() - timer_start) < 15:
-                        pass
+                        # Wait for git (There is a limit of git clone can be done at a time)
+                        while abs(time.time() - timer_start) < 15:
+                            pass
 
                     collaborators = fork.get_collaborators()
                     allowed_users = secret.GITHUB_ALLOWED_USERS.copy()
