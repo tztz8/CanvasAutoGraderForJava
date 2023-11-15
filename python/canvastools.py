@@ -14,6 +14,7 @@ class CanvasTools:
         self.course = self.canvas.get_course(course_id)
         self.users = self.course.get_users()
         self.assignment = self.course.get_assignment(assignment_id)
+        print(self.getAssignmentInfoStr())
 
     def is_in_course(self, canvas_id: int):
         for user in self.users:
@@ -74,5 +75,5 @@ class CanvasTools:
         old_points = submission.score
 
         print(user_id, ": original grade: ", old_points, ", new grade: ", output_grade)
-        if old_points is None or output_grade >= old_points:
+        if old_points is None or output_grade > float(old_points):
             submission.edit(submission={'posted_grade': output_grade}, comment={'text_comment': comment})
