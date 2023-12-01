@@ -313,7 +313,7 @@ class TestRunner:
                                 pass
                     else:
                         already_exists = True
-                        stream = os.popen("cd " + clone_to + " && git restore . && git clean -f && git pull")
+                        stream = self.clean_up_repo(clone_to, True)
                         outfile.write(stream.read())
                         outfile.write("\n")
                         # Wait for git (There is a limit of git clone can be done at a time)
@@ -399,6 +399,19 @@ class TestRunner:
               ", Number of Canvas Download: ", num_of_canvas_download,
               ", Number of students: ", num_of_students)
         return self.students
+
+    def clean_up_repo(self, clone_to, get_new):
+        # Move in to students fork
+        command = "cd " + clone_to
+        # Checkout there default branch
+        command += " && git checkout $(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)"
+        # Remove any old work we need in their fork
+        command += " && git restore . && git clean -f"
+        # Get any update from the student
+        if get_new:
+            command += " && git pull"
+        stream = os.popen(command)
+        return stream
 
     def _step_get_student_canvas(self, found_src_folder, student: student_object, studetn_folder):
         if self.canvas_tools.is_in_course(student.canvas_id):

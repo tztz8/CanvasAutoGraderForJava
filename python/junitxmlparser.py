@@ -78,6 +78,8 @@ def get_mut_tests_results(num, pre_file, after_file, student):
     return ((num_of_tests - failures) / num_of_tests) * 100
 
 
+# TODO: expanded for TDD
+
 if __name__ == '__main__':
     results = get_results('TEST-junit-jupiter.xml')
     print(results, type(results))
