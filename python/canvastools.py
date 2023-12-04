@@ -1,3 +1,4 @@
+import csv
 import os
 import shutil
 
@@ -61,7 +62,7 @@ class CanvasTools:
 
         old_points = submission.score
 
-        if old_points is None or output_grade >= old_points:
+        if old_points is None or output_grade > float(old_points):
             submission.edit(submission={'posted_grade': output_grade})
 
     def update_grade_with_comment(self, user_id, grade, comment: str):
@@ -77,3 +78,23 @@ class CanvasTools:
         print(user_id, ": original grade: ", old_points, ", new grade: ", output_grade)
         if old_points is None or output_grade > float(old_points):
             submission.edit(submission={'posted_grade': output_grade}, comment={'text_comment': comment})
+
+
+if __name__ == "__main__":
+    setup_dir = currentLab.SETUP_DIR
+    canvasTools = CanvasTools(secret.API_KEY, secret.API_URL, secret.COURSE_ID, currentLab.CANVAS_HW_ID)
+    with open(setup_dir + '/grades.csv', 'r') as csv_file:
+        grades = csv.reader(csv_file, delimiter=',')
+        first_line = True
+        for grade_line in grades:
+            if first_line:
+                first_line = False
+            else:
+                name = grade_line[0]
+                student_canvas_id = int(grade_line[1])
+                score = float(grade_line[8])
+                print("Uploading Grade for ", name)
+                if canvasTools.is_in_course(student_canvas_id):
+                    canvasTools.update_grade(student_canvas_id, score)
+                else:
+                    print("Not in course")

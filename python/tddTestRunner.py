@@ -1,6 +1,7 @@
 import csv
 import os
 import sys
+import time
 
 import git
 
@@ -15,6 +16,7 @@ from testRunner import TestRunner, do_we_continue
 user_story_names = ["Add", "Subtract", "Multiply", "Doubles", "Divide", "Factorial", "Previous"]
 ttd_tasks = ["Unit Test", "Feature Done", "Refactor"]
 number_of_commits = 21
+
 
 def step_run_tdd_tests(test_runer):
     commit_messages_for_ttd = []
@@ -70,25 +72,29 @@ def step_run_tdd_tests(test_runer):
                             output.write("\n")
                             # Checkout commit (tdd step)
                             student_repo.git.checkout(student_commits[index_of_ttd[commit_message]])
+                            # Get User Story Name
+                            user_story_name = commit_message.split(":")[0]
+                            assert user_story_name in user_story_names
                             if ttd_tasks[0] in commit_message:
                                 output.write("Running Unit Test Test")
                                 # Note: tests should fail
-                                run_both_ta_and_student_junit_tests(commit_message, output, student_dir, student_output,
+                                run_both_ta_and_student_junit_tests(user_story_name, output, student_dir, student_output,
                                                                     test_runer, ttd_tasks, user_story_names)
                             elif ttd_tasks[1] in commit_message:
                                 output.write("Running Feature Test")
                                 # Note: tests should pass
-                                run_both_ta_and_student_junit_tests(commit_message, output, student_dir, student_output,
+                                run_both_ta_and_student_junit_tests(user_story_name, output, student_dir, student_output,
                                                                     test_runer, ttd_tasks, user_story_names)
                             else:
                                 assert ttd_tasks[2] in commit_message
                                 output.write("Running Refactor Test")
                                 # Note: tests should pass
-                                run_both_ta_and_student_junit_tests(commit_message, output, student_dir, student_output,
+                                run_both_ta_and_student_junit_tests(user_story_name, output, student_dir, student_output,
                                                                     test_runer, ttd_tasks, user_story_names)
                                 # TODO: Run student tests on sol src code
                                 # Check Style (The only time we care about check style)
-                                run_check_style(output, student_dir, True, test_runer, f"../{student.github_user_name}-tdd-output/{commit_message.lower().replace(' ', '-').replace(':', '')}-checkstyleoutfile")
+                                run_check_style(output, student_dir, True, test_runer,
+                                                f"../{student.github_user_name}-tdd-output/{commit_message.lower().replace(' ', '-').replace(':', '')}-checkstyleoutfile")
                         else:
                             output.write(f"Missing {commit_message} commit")
                             student.message.append(f"Missing {commit_message} commit")
@@ -99,16 +105,16 @@ def step_run_tdd_tests(test_runer):
             print("missing ", student.github_user_name)
 
 
-def run_both_ta_and_student_junit_tests(commit_message, output, student_dir, student_output, test_runer, ttd_tasks,
+def run_both_ta_and_student_junit_tests(user_story_name, output, student_dir, student_output, test_runer, ttd_tasks,
                                         user_story_names):
-    junit_to_run = commit_message.replace(" ", "").replace(":", "_")
+    junit_to_run = user_story_name.replace(" ", "")
     # for user_story_name in user_story_names:
     #     if user_story_name.lower() in commit_message.lower():
     #         junit_to_run += user_story_name.replace(" ", "")
     #         break
-    # # TA JUnit tests
-    # run_junit_tests(junit_to_run, output, student_dir, student_output, test_runer,
-    #                 ttd_tasks, True)
+    # TA JUnit tests
+    run_junit_tests(junit_to_run, output, student_dir, student_output, test_runer,
+                    ttd_tasks, True)
     # Student tests
     run_junit_tests(junit_to_run, output, student_dir, student_output, test_runer,
                     ttd_tasks, False)
@@ -125,10 +131,14 @@ def run_junit_tests(junit_to_run, output, student_dir, student_output, test_rune
         junit_tests_command += "_TA"
     else:
         junit_tests_command += "_Student"
+    # add TA tests jar
+    if use_ta_tests:
+        junit_tests_command += " -cp "
+        junit_tests_command += test_runer.source_test_jar
     # add students compiled code
     junit_tests_command += " -cp out/classes"
     if use_ta_tests:
-        junit_tests_command += " --select-class=cscd212TATests." + junit_to_run
+        junit_tests_command += " --select-class=cscd212TATests" + junit_to_run + "UserStory"
     else:
         junit_tests_command += " --scan-classpath"
     print(junit_tests_command)
@@ -188,54 +198,60 @@ def step_read_tdd_tests(test_runer):
         # TODO: add message to student
         for student in test_runer.students:
             student_dir = test_runer.setup_dir + "/forks/" + student.github_user_name
+            timer_start = time.time()
             test_runer.clean_up_repo(student_dir, False)
+            while abs(time.time() - timer_start) < 2:
+                pass
             student_output = f"{test_runer.setup_dir}/forks/{student.github_user_name}-tdd-output"
 
             junit_weight = grade_weight.JUnit_Weight / 100
             junit_result_total = 0
+            set_pass_tests = set()
             for commit_message in commit_messages_for_ttd:
+                user_story_name = commit_message.split(":")[0]
                 # TODO: Check Read result
                 for who_is in ["TA", "Student"]:
                     # TODO: add to junitxmlparser for TDD reader (no message for fail on Unit Tests and There Code)
-                    junit_result = junitxmlparser.get_mut_tests_results(
-                        test_runer.num_of_junit_tests,
-                        student_output + '/junit-out/' + \
-                        commit_message.replace(" ", "").replace(":", "_") + who_is,
-                        '/TEST-junit-jupiter.xml',
-                        student)
+                    set_pass_tests, junit_result = junitxmlparser.get_tdd_tests_results(
+                        student_output + "/junit-out/" + user_story_name + "_" + who_is + "/TEST-junit-jupiter.xml",
+                        commit_message,
+                        (ttd_tasks[0] in commit_message),
+                        (who_is == "TA"),
+                        set_pass_tests,
+                        student
+                    )
                     junit_result = min(100, max(0, junit_result))
-                    # If unit tests
-                    if ttd_tasks[0] in commit_message:
-                        # TODO: want NEW fail tests (old test should still pass)
-                        junit_result = 100 - junit_result  # FIXME: wrong
+                    if who_is == "TA":
+                        junit_result *= 2
                     junit_result_total += junit_result
             # Fix 0 to 100 ((len(commit_messages_for_ttd) * 2) * 100)
-            junit_result = junit_result_total / (len(commit_messages_for_ttd) * 2)
+            junit_result = junit_result_total / (len(commit_messages_for_ttd) * 3)
             student.junit_result = junit_result
 
             checkstyle_weight = grade_weight.Collaborators_Weight / 100
             checkstyle_result_total = 0
             for user_story_name in user_story_names:
                 # TODO: check if works
-                checkstyle_result = checkstyletools.get_checkstyle_results(f"{student_output}/{user_story_name.lower().replace(' ', '-').replace(':', '')}-{ttd_tasks[2].lower().replace(' ', '-').replace(':', '')}-checkstyleoutfile")
+                checkstyle_result = checkstyletools.get_checkstyle_results(
+                    f"{student_output}/{user_story_name.lower().replace(' ', '-').replace(':', '')}-{ttd_tasks[2].lower().replace(' ', '-').replace(':', '')}-checkstyleoutfile")
                 checkstyle_result_total += checkstyle_result
             # Fix 0 to 100
-            checkstyle_result = checkstyle_result_total / len(user_story_names)
+            checkstyle_result = checkstyle_result_total / (len(user_story_names))
             student.checkstyle_result = checkstyle_result
 
             collaborators_weight = grade_weight.CheckStyle_Weight / 100
             out_of = grade_weight.Collaborators_Weight
             collaborators_result = min(100, ((max(0, (out_of - student.num_of_bad_collaborators)) / out_of) * 100))
-            if (not student.has_src) and (not student.has_fork):
-                collaborators_result = 0
+            # if (not student.has_src) and (not student.has_fork):
+            #     collaborators_result = 0
 
             assert (junit_weight + checkstyle_weight + collaborators_weight) == 1
             result = (junit_weight * junit_result) + \
                      (checkstyle_weight * checkstyle_result) + \
                      (collaborators_weight * collaborators_result)
             student.score = result
-            if (not student.has_src) and (not student.has_fork):
-                assert result == 0
+            # if (not student.has_src) and (not student.has_fork):
+            #     assert result == 0
             student.old_score = test_runer.canvas_tools.get_grade(student.canvas_id)
             print(student.get_row_message())
             grad_writer.writerow(student.get_row())
@@ -257,5 +273,5 @@ if __name__ == '__main__':
         step_run_tdd_tests(test_runer)
     while do_we_continue("step_read_tests"):
         step_read_tdd_tests(test_runer)
-    # while do_we_continue("step_upload_grades"):
-    #     test_runer.step_upload_grades()
+    while do_we_continue("step_upload_grades"):
+        test_runer.step_upload_grades()

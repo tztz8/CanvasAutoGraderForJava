@@ -42,10 +42,14 @@ class student_object:
 
     def get_message(self):
         messages = ""
-        for message in self.message:
-            messages += message
-            messages += "\nMessage: "
-        messages += "No more messages"
+        for i, message in enumerate(self.message):
+            if i < 10:
+                messages += message
+                messages += "\nMessage: "
+        if len(self.message) > 11:
+            messages += "Too many messages"
+        else:
+            messages += "No more messages"
         message_string = "Auto Grader Output for {username}:\n\n" \
                          "Message: {messages}\n\n" \
                          "----------------------------------------------------------------------------------------\n" \

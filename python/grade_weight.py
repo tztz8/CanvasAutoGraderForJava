@@ -1,5 +1,5 @@
-JUnit_Weight = 90
-CheckStyle_Weight = 5
+JUnit_Weight = 80
+CheckStyle_Weight = 15
 Collaborators_Weight = 5
 
 CHECKSTYLE_OUT_OF = 15

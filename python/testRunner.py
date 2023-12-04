@@ -122,7 +122,8 @@ class TestRunner:
 
                 junit_weight = grade_weight.JUnit_Weight / 100
                 junit_result = junitxmlparser.get_mut_tests_results(
-                    self.num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml', student)
+                    self.num_of_junit_tests, student_dir + '/build/test-results/test', '/TEST-junit-jupiter.xml',
+                    student)
                 junit_result = min(100, max(0, junit_result))
                 student.junit_result = junit_result
 
@@ -167,9 +168,9 @@ class TestRunner:
                         output.write("\n")
                         # Compile students code
                         compile_command = ("cd " + student_dir + " && " +
-                                          currentLab.JAVA_PATH + "c -Xlint:unchecked -cp " +
-                                          self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar -cp " +
-                                          self.source_test_jar + " -d out/classes $(find src -name '*.java')")
+                                           currentLab.JAVA_PATH + "c -Xlint:unchecked -cp " +
+                                           self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar -cp " +
+                                           self.source_test_jar + " -d out/classes $(find src -name '*.java')")
                         output.write(compile_command)
                         output.write("\n")
                         stream = os.popen(compile_command)
@@ -179,10 +180,10 @@ class TestRunner:
                         for junit_to_run in self.junit_to_run_list:
                             index += 1
                             junit_tests_command = "cd " + student_dir + " && " + \
-                                              currentLab.JAVA_PATH + " -jar " + \
-                                              self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar " + \
-                                              "--reports-dir=build/test-results/test" + str(index) + " -cp " + \
-                                              self.source_test_jar + " -cp out/classes --select-class=" + junit_to_run
+                                                  currentLab.JAVA_PATH + " -jar " + \
+                                                  self.setup_dir + "/tools/junit-platform-console-standalone-1.9.2.jar " + \
+                                                  "--reports-dir=build/test-results/test" + str(index) + " -cp " + \
+                                                  self.source_test_jar + " -cp out/classes --select-class=" + junit_to_run
                             print(junit_tests_command)
                             output.write(junit_tests_command)
                             output.write("\n")
@@ -190,10 +191,10 @@ class TestRunner:
                             output.write(stream.read())
                         # Run CheckStyle Tests
                         checkstyle_command = ("cd " + student_dir + " && " +
-                                          currentLab.JAVA_PATH + " -jar " +
-                                          self.setup_dir + "/tools/checkstyle-10.9.3-all.jar " +
-                                          "-c=https://github.com/tztz8/HelloGradle/raw/master/ewu-cscd212-error.xml " +     # Checkstyle for CSCD212
-                                          "-o=checkstyleoutfile $(find src -name '*.java')")
+                                              currentLab.JAVA_PATH + " -jar " +
+                                              self.setup_dir + "/tools/checkstyle-10.9.3-all.jar " +
+                                              "-c=https://github.com/tztz8/HelloGradle/raw/master/ewu-cscd212-error.xml " +  # Checkstyle for CSCD212
+                                              "-o=checkstyleoutfile $(find src -name '*.java')")
                         output.write(checkstyle_command)
                         output.write("\n")
                         stream = os.popen(checkstyle_command)
@@ -206,7 +207,7 @@ class TestRunner:
 
     def step_setup_tests(self):
         # make tool dir, change into tool dir, download file
-        if not os.path.exists(self.setup_dir + "/tools/"+ "junit-platform-console-standalone-1.9.2.jar"):
+        if not os.path.exists(self.setup_dir + "/tools/" + "junit-platform-console-standalone-1.9.2.jar"):
             os.system("mkdir -p " + self.setup_dir + "/tools && cd " + self.setup_dir + "/tools && wget "
                       + "https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.9.2/junit-platform-console-standalone-1.9.2.jar")
         # make tool dir, change into tool dir, download file
@@ -313,11 +314,11 @@ class TestRunner:
                                 pass
                     else:
                         already_exists = True
-                        stream = self.clean_up_repo(clone_to, True)
+                        stream = self.clean_up_repo(clone_to, False)  # TODO: set get_new True
                         outfile.write(stream.read())
                         outfile.write("\n")
                         # Wait for git (There is a limit of git clone can be done at a time)
-                        while abs(time.time() - timer_start) < 15:
+                        while abs(time.time() - timer_start) < 2:  # TODO: when get_new is True be 15
                             pass
 
                     collaborators = fork.get_collaborators()
@@ -382,7 +383,9 @@ class TestRunner:
                 if num_of_students != 0 and not (row[3].lower() in github_users.keys() or os.path.exists(
                         studetn_folder + "/src")):
                     found_src_folder = False
-                    found_src_folder = self._step_get_student_canvas(found_src_folder, self.students[github_users[row[3].lower()]], studetn_folder)
+                    found_src_folder = self._step_get_student_canvas(found_src_folder,
+                                                                     self.students[github_users[row[3].lower()]],
+                                                                     studetn_folder)
                     # Check if src folder is there
                     if os.path.exists(studetn_folder + "/src"):
                         # move src folder
