@@ -216,6 +216,7 @@ class TestRunner:
                       + "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.9.3/checkstyle-10.9.3-all.jar")
         # copy test jar to tools
         shutil.copy(self.source_test_jar, self.setup_dir + "/tools")
+        # TODO: when running the JUnit tests use this jar file
         print("Copy Jar into tools done")
 
     def step_setup_labs(self):
