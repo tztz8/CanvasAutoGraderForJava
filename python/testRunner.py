@@ -176,6 +176,7 @@ class TestRunner:
                         stream = os.popen(compile_command)
                         output.write(stream.read())
                         # Run JUnit Tests
+                        # TODO: add Timeout to the tests
                         index = 0
                         for junit_to_run in self.junit_to_run_list:
                             index += 1
